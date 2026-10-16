@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.0 (approved for implementation) |
+| Status | v1.1 (Phase 0 complete) |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.3 |
 
@@ -24,7 +24,7 @@
 | Pixel readback | D3D11 GPU copy on frame arrival, then a staging texture read when the timer ticks | Chosen in the spike: the frame pool never stalls, and nothing is read back to the CPU until a tick. |
 | Image encode / crop | WPF imaging (WIC): `PngBitmapEncoder`, `JpegBitmapEncoder`, `CroppedBitmap` | Built in. |
 | Change detection | Written in-house: changed-area measure, settle state machine, 64-bit dHash | §6.2 |
-| PDF | **PDFsharp 6.2.4** (MIT), pending your licence decision (§12) | Bookmarks (outlines) and simple absolute positioning. PDFsharp 6.5+ is AGPL-3.0. |
+| PDF | **PDFsharp 6.2.4** (MIT), pinned (decision F2, §12) | Bookmarks (outlines) and simple absolute positioning. PDFsharp 6.5+ is AGPL-3.0; don't upgrade past 6.2.x. |
 | Persistence | `System.Text.Json` (source-generated), atomic replace | §5 |
 | Tests | xUnit; **UglyToad.PdfPig** (Apache-2.0) to read PDFs back; **FlaUI.UIA3** (MIT) for UI automation | §3 |
 | Packaging | `dotnet publish -r win-x64 --self-contained -p:PublishSingleFile=true` | |
@@ -174,7 +174,7 @@ The target videos have no moving elements between page turns. So every capture i
 1. Downscale the capture to a grayscale grid of 160×90 cells (aspect ratio kept), averaging the pixels in each cell.
 2. A cell counts as changed if its brightness differs from the same cell in the reference frame by more than a **pixel tolerance** (default 24 of 255). This absorbs compression noise and anti-aliasing (FR-D2).
 3. `changedFraction` = changed cells ÷ total cells.
-4. Two captures are **different** if `changedFraction` ≥ the **area threshold** (FR-D3, default **8%**). A half-page turn changes about 40–50%, so it is kept (FR-D5). The mouse passing over or YouTube's controls appearing briefly change less than 8% and are ignored (FR-D7).
+4. Two captures are **different** if `changedFraction` ≥ the **area threshold** (FR-D3, default **3%**, lowered from 8% after the Phase 0 measurements, F15). A full page turn measured 19–23% when capturing the browser window, and stable frames measured 0.00%.
 
 **Settle detection (`ChangeDetector`, FR-D6)**
 
@@ -186,6 +186,7 @@ Pending:  capture vs candidate  → same?      → count++; if count ≥ settleC
           (capture vs lastSaved "same" again → back to Stable: it was a blip)
 ```
 
+- **"Same" for settling uses a stricter test than "different" for page turns** (F16). At tolerance 24, a fading-out ghost of the old page doesn't register as change. So the settle check uses `settleTolerance` 8 and requires `changedFraction` < 1%. A frame still mid-fade (7.3% at tolerance 8) therefore doesn't count as settled.
 - With the default `settleCount = 1` at a 1 s interval, a page must be shown for about 2 s to be captured.
 - Mid-animation frames never settle, so they are never saved.
 - The grids for `lastSaved` and the candidate are kept in memory. On resume (FR-C11), the `lastSaved` grid is rebuilt from the last image on disk.
@@ -324,7 +325,7 @@ Each phase lists what gets built, how I verify it, and when it's done.
 
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R1 | Black frames from hardware-accelerated browser content (especially on hybrid GPUs) | Main scenario broken | Phase 0 tests this on this exact machine. If it fails: force the browser onto one GPU in Windows graphics settings, or turn off browser hardware acceleration, and document the workaround. DXGI Desktop Duplication is a weaker fallback on hybrid GPUs. |
+| R1 | ~~Black frames from hardware-accelerated browser content (especially on hybrid GPUs)~~ **Retired: Phase 0 captured YouTube in Chrome cleanly on this hybrid GPU (F12).** | Main scenario broken | Phase 0 tests this on this exact machine. If it fails: force the browser onto one GPU in Windows graphics settings, or turn off browser hardware acceleration, and document the workaround. DXGI Desktop Duplication is a weaker fallback on hybrid GPUs. |
 | R2 | A page turn is missed (a partial turn below the threshold, or a page shown for less than the settle time) | Missing music in the PDF | Low default threshold, tuned against ground truth; live readout; settle count can be set to 0. |
 | R3 | YouTube's controls or the mouse cause extra frames | A few extra frames to delete | Low impact now that there are no moving elements. Leave the cursor out; follow A7. Deleting frames is quick (FR-A9). |
 | R4 | Mixed-DPI coordinates or crops come out wrong | Wrong PDF content | Pixel-space boxes; tested on this machine's 125% + 100% monitors. |
@@ -353,12 +354,12 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | 4 | Real videos | Open in your default browser (covered by the coordination rule in row 3). Links: **V1** https://www.youtube.com/watch?v=atYihjjTgAk · **V2** https://www.youtube.com/watch?v=LyZIyDVehzU · **V3** https://www.youtube.com/watch?v=Ay8Vauav4yA (animated / cross-fade page turns; the main test of settle detection). |
 | 5 | Windows 10 | No Windows 10 machine is available. Windows 10 support is checked only at the API level (R8). |
 
-## 12. Phase 0 findings (in progress)
+## 12. Phase 0 findings
 
 | # | Finding | Action |
 |---|---|---|
 | F1 | .NET SDK 10.0.402 installed with winget. The repository is set up (`global.json`, `Directory.Build.props`, central package versions in `Directory.Packages.props`). | Done |
-| F2 | **PDFsharp licence change.** PDFsharp **6.5.0 is AGPL-3.0** and refuses to run without a licence (`PdfSharpLicenseException`). **6.2.4** is the last MIT release. | Pinned to 6.2.4. **Your decision needed** (see below). |
+| F2 | **PDFsharp licence change.** PDFsharp **6.5.0 is AGPL-3.0** and refuses to run without a licence (`PdfSharpLicenseException`). **6.2.4** is the last MIT release. | **Decided: stay on 6.2.4 (MIT)** (2026-10-16). |
 | F3 | PDFsharp 6.2.4 on .NET 10: PNG crops are embedded at full resolution and placed to within 0.1 pt of the plan. Stacked flow, page breaks and the shared scale were all checked with PdfPig and visually. | Confirmed |
 | F4 | PDFsharp writes outline `Top` as-is in PDF coordinates, which measure from the bottom of the page. The exporter must set `Top = pageHeight − y`. | Built into the §6.4 design |
 | F5 | PDFsharp brings in `System.Security.Cryptography.Pkcs` 8.0.1, which has known vulnerabilities. On `net10.0-windows` the SDK prunes it, because the framework supplies a fixed version. A central transitive pin covers any plain `net10.0` project. | Done |
@@ -367,9 +368,15 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | F8 | Monitor enumeration in a per-monitor-DPI-aware process returns physical bounds: laptop 1920×1080 at 125%, plus two 1920×1080 at 100% at negative coordinates. | Confirmed |
 | F9 | Window enumeration includes the NVIDIA overlay (a full-screen invisible tool window). | Filter tool windows and transparent windows out of the target picker |
 
-**Licence decision (F2).** The options are:
-- **(a) Stay on PDFsharp 6.2.4 (MIT)** *(recommended)*. It covers everything we need, and the risk of missing future security fixes is low: the app only writes PDFs from its own images and never parses outside PDFs. Export is kept behind `IPdfExporter`, so the library can be swapped later.
-- **(b) Use PDFsharp 6.5+ under AGPL-3.0.** Fine for personal use. If Scrimshaw is ever distributed, it would have to be released under AGPL too.
-- **(c) Switch to PdfPig's document builder (Apache-2.0).** It's already used for tests. It needs a spike to confirm image embedding and bookmarks.
+| F10 | **Monitor capture:** the laptop panel (125%) captures at its native 1920×1080. Ticks land within ±8 ms of a 1 s interval. Readback 4–6 ms, PNG encode 40–120 ms at 1080p, CPU 0.4–1.1% of 16 cores. | Confirmed; NFR-3 4K benchmark still due in Phase 2 |
+| F11 | **All monitors:** the stitched image (3840×2173, including negative coordinates) is laid out correctly. WGC only sends frames when content changes (an idle monitor sent 1 frame in 4 s), so the grabber must keep the latest frame, as designed. | Confirmed |
+| F12 | **Hybrid GPU and YouTube:** hardware-accelerated video in Chrome captures cleanly, with no black frames. | R1 retired |
+| F13 | **Covered window:** a window covered by another app still captures cleanly, while monitor capture shows the window on top. No capture border appears in any frame on Windows 11. | Confirmed |
+| F14 | **Cursor exclusion** couldn't be observed, because the mouse was idle. | Test in Phase 2 by moving the cursor over a TestPlayer window programmatically |
+| F15 | **Change detection on V3** (tolerance 24): page turns measured 18.8% and 21.1% in window capture (the video is about half the window, and notation is mostly white space). Stable pages measured 0.00%, and Chrome losing focus measured 0.00%. 8% would be too close to a half-page turn. | Default area threshold lowered to **3%** (§6.2) |
+| F16 | **Cross-fade:** a mid-fade frame with the old page ghosted was captured. At tolerance 24 it looks the same as the clean page that follows (0.04%); at tolerance 8 it differs by 7.3%. | Settle check uses a stricter tolerance (§6.2) |
+| F17 | **End of video:** YouTube shows an animated end screen and then autoplays the next video. These are real changes and will be captured. | Help text: turn off autoplay and stop capture at the end; end-screen frames can be deleted in review (FR-A9) |
+| F18 | Window titles change when YouTube moves to another video. | During a session, track the target by window handle; the title is only used to find the window again when a workspace is reopened |
+| F19 | A test that used Notepad brought up your own saved notes in a monitor capture. | Capture deleted. Tests use only Scrimshaw's own windows (TestPlayer) from now on |
 
-Still to do in Phase 0 (needs desktop time): monitor, window and all-monitor capture runs, covered window, cursor and border, real-video capture on this hybrid GPU, timing and CPU.
+**Phase 0 result: GO.** WGC and PDFsharp 6.2.4 are confirmed. Moved to Phase 2: checking cursor exclusion (F14) and the 4K benchmark.

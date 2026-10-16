@@ -14,6 +14,26 @@ using Windows.Graphics.Capture;
 
 if (args.Length == 0) { Console.WriteLine("usage: list | monitor <i> | window <title> | all  [--interval s] [--count n] [--cursor] [--out dir]"); return 1; }
 
+if (args[0] == "analyze")
+{
+    // Prototype of the planned AreaChange measure: 160-wide grayscale cell grid, per-cell tolerance.
+    int tol = int.Parse(Opt("--tol") ?? "24", CultureInfo.InvariantCulture);
+    float[]? prev = null;
+    foreach (string f in Directory.GetFiles(args[1], "frame_*.png").Order())
+    {
+        float[] grid = Grid(f, out int gw, out int gh);
+        if (prev is not null)
+        {
+            int changed = 0;
+            for (int i = 0; i < grid.Length; i++) if (Math.Abs(grid[i] - prev[i]) > tol) changed++;
+            double frac = (double)changed / grid.Length;
+            Console.WriteLine($"{Path.GetFileName(f)} vs prev: changed={frac * 100,6:F2}% {new string('#', (int)Math.Round(frac * 100))}");
+        }
+        prev = grid;
+    }
+    return 0;
+}
+
 var monitors = Native.GetMonitors();
 if (args[0] == "list")
 {
@@ -124,6 +144,27 @@ static RawImage? Stitch(List<(WgcCapturer Cap, Rect32 Bounds)> targets)
             Buffer.BlockCopy(part.Bgra, y * part.Width * 4, canvas, ((b.Top - top + y) * w + (b.Left - left)) * 4, cw * 4);
     }
     return new RawImage(w, h, canvas);
+}
+
+static float[] Grid(string path, out int gw, out int gh)
+{
+    var src = new FormatConvertedBitmap(BitmapFrame.Create(new Uri(Path.GetFullPath(path)), BitmapCreateOptions.None, BitmapCacheOption.OnLoad), PixelFormats.Gray8, null, 0);
+    int w = src.PixelWidth, h = src.PixelHeight;
+    var px = new byte[w * h];
+    src.CopyPixels(px, w, 0);
+    gw = 160;
+    gh = Math.Max(1, (int)Math.Round(160.0 * h / w));
+    var grid = new float[gw * gh];
+    for (int gy = 0; gy < gh; gy++)
+        for (int gx = 0; gx < gw; gx++)
+        {
+            int x0 = gx * w / gw, x1 = (gx + 1) * w / gw, y0 = gy * h / gh, y1 = (gy + 1) * h / gh;
+            long sum = 0;
+            for (int y = y0; y < y1; y++)
+                for (int x = x0; x < x1; x++) sum += px[y * w + x];
+            grid[gy * gw + gx] = (float)sum / ((x1 - x0) * (y1 - y0));
+        }
+    return grid;
 }
 
 static void SavePng(RawImage img, string path)
