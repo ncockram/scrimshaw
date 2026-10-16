@@ -64,15 +64,17 @@ public sealed unsafe class WgcFrameSource : IFrameSource
     private readonly GraphicsCaptureItem _item;
     private readonly Direct3D11CaptureFramePool _pool;
     private readonly GraphicsCaptureSession _session;
+    private readonly IntPtr _window;
     private Windows.Graphics.SizeInt32 _poolSize;
     private ID3D11Texture2D? _latest;
     private ID3D11Texture2D? _staging;
     private volatile bool _closed;
     private bool _disposed;
 
-    private WgcFrameSource(D3DDevice d3d, GraphicsCaptureItem item, bool includeCursor)
+    private WgcFrameSource(D3DDevice d3d, GraphicsCaptureItem item, bool includeCursor, IntPtr window = default)
     {
         _d3d = d3d;
+        _window = window;
         _item = item;
         _item.Closed += OnItemClosed;
         _poolSize = item.Size;
@@ -99,7 +101,11 @@ public sealed unsafe class WgcFrameSource : IFrameSource
 
     public static bool IsSupported => GraphicsCaptureSession.IsSupported();
 
-    public bool IsClosed => _closed;
+    /// <summary>
+    /// True once WGC reports the item closed, or (for windows) the window no longer exists. The window
+    /// check matters: when a process is killed, the Closed event isn't reliably raised (Phase 2 desktop tests).
+    /// </summary>
+    public bool IsClosed => _closed || (_window != IntPtr.Zero && !NativeMethods.IsWindow(_window));
 
     /// <summary>Number of frames WGC has delivered (diagnostics).</summary>
     public int FramesArrived { get; private set; }
@@ -108,7 +114,7 @@ public sealed unsafe class WgcFrameSource : IFrameSource
         new(d3d, CreateItem(monitor, slot: 4), includeCursor);
 
     public static WgcFrameSource ForWindow(D3DDevice d3d, IntPtr hwnd, bool includeCursor) =>
-        new(d3d, CreateItem(hwnd, slot: 3), includeCursor);
+        new(d3d, CreateItem(hwnd, slot: 3), includeCursor, hwnd);
 
     public RawImage? Grab()
     {

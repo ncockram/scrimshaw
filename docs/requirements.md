@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | Draft v0.3 |
-| Date | 2026-10-16 |
+| Status | v0.4 |
+| Date | 2026-10-16 (FR-D8 added after Phase 2 real-video tests) |
 | Source | `brainstorm.md` (initial brainstorming conversation); review comments on v0.1 and v0.2 |
 
 ## 1. Purpose
@@ -91,6 +91,7 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | FR-D5 | Every page turn is kept at the default threshold, including **partial** page turns where only part of the page (e.g. the top half) changes. | M |
 | FR-D6 | **Settle detection.** A changed frame is only saved once it has stayed the same for a set number of captures (default 1, meaning two matching captures in a row). This skips half-finished frames from page-turn animations, fades and slides. It can be turned off. | M |
 | FR-D7 | Small local changes are **not** treated as new frames at the default threshold. The target videos have no moving elements between page turns, so in practice this covers compression flicker, the mouse cursor passing over, and YouTube's controls briefly appearing. | M |
+| FR-D8 | **Keep the cleanest version of each page.** If a page is saved while something briefly covers part of it (for example, YouTube's controls and title, which appear for a few seconds when playback starts or the mouse moves), the saved image is replaced by the version of that page that stays on screen longest. It can be turned off. *(Added after Phase 2: without it, the first page of both V1 and V2 was saved with the controls showing.)* | M |
 
 ### 4.4 Review and annotation
 
@@ -168,6 +169,7 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | 9 | Staff size in the PDF | **One shared scale by default.** → FR-P7 |
 | — | Crop alignment (v0.2 review note) | **Left-aligned.** Other alignments later. → FR-P4, FR-P12 |
 | — | Constraints and assumptions | **All confirmed.** → §6 |
+| — | Player controls on saved pages (Phase 2 finding) | **Keep the version shown longest.** → FR-D8 |
 
 ## 8. Open questions
 

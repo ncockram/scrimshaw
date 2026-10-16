@@ -62,7 +62,9 @@ internal static partial class Program
         }
         var window = new Window
         {
-            Title = o.Title,
+            // The final title appears only once the window is placed and rendered, so tests that look the
+            // window up by title never start capturing a half-initialised window.
+            Title = o.Title + " (starting)",
             WindowStyle = WindowStyle.None,
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = true,
@@ -70,9 +72,19 @@ internal static partial class Program
             UseLayoutRounding = true,
             Content = new Grid { ClipToBounds = true, Children = { back, front } },
         };
-        window.SourceInitialized += (_, _) =>
-            SetWindowPos(new WindowInteropHelper(window).Handle, IntPtr.Zero, o.X, o.Y, o.W, o.H, 0x0040 /* SWP_SHOWWINDOW */);
-        window.Loaded += async (_, _) => await PlayAsync(o, window, back, front);
+        // Move first, then size: moving between monitors with different scaling makes WPF rescale the window
+        // (PerMonitorV2), so the physical size is only reliable once the window is on its target monitor.
+        window.SourceInitialized += (_, _) => PlaceWindow(window, o);
+        window.Loaded += async (_, _) =>
+        {
+            PlaceWindow(window, o);
+            await NextFrameAsync();
+            await Task.Delay(500);
+            PlaceWindow(window, o);
+            await NextFrameAsync();
+            window.Title = o.Title;
+            await PlayAsync(o, window, back, front);
+        };
         return app.Run(window);
     }
 
@@ -251,6 +263,14 @@ internal static partial class Program
         rtb.Render(dv);
         rtb.Freeze();
         return rtb;
+    }
+
+    private static void PlaceWindow(Window window, PlayerOptions o)
+    {
+        IntPtr hwnd = new WindowInteropHelper(window).Handle;
+        const uint NoSize = 0x0001, NoZOrder = 0x0004, Show = 0x0040;
+        SetWindowPos(hwnd, IntPtr.Zero, o.X, o.Y, 0, 0, NoSize | NoZOrder | Show);
+        SetWindowPos(hwnd, IntPtr.Zero, o.X, o.Y, o.W, o.H, NoZOrder | Show);
     }
 
     [LibraryImport("user32.dll")]

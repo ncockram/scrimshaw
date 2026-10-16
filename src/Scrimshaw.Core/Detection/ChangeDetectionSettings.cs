@@ -23,4 +23,11 @@ public sealed record ChangeDetectionSettings
 
     /// <summary>Two captures are "settled" when less than this fraction changed at <see cref="SettleTolerance"/>.</summary>
     public double SettleAreaThreshold { get; init; } = 0.01;
+
+    /// <summary>
+    /// Keep the version of each page that stays on screen longest (FR-D8). Video players overlay their
+    /// controls for a few seconds when playback starts or the mouse moves; without this, a page saved
+    /// during that moment keeps the overlay, because the clean page differs too little to count as new.
+    /// </summary>
+    public bool KeepLongestShownVersion { get; init; } = true;
 }

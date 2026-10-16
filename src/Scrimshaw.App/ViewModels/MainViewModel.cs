@@ -306,7 +306,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     private void OnStatsChanged(object? sender, CaptureStats stats) => _ui.Post(() => Stats = stats);
 
-    private void OnFrameSaved(object? sender, FrameRecord frame) => _ui.Post(UpdateFrameInfo);
+    private void OnFrameSaved(object? sender, FrameRecord frame) => _ui.Post(() =>
+    {
+        LatestFramePath = null; // force the preview to reload: a replaced frame keeps its file name
+        UpdateFrameInfo();
+    });
 
     private async Task WatchAsync(CaptureSession session)
     {

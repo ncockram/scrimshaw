@@ -42,7 +42,7 @@
 
                     <TextBlock Text="What to capture" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                     <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="↻" Margin="6,0,0,0" ToolTip="Refresh the list"
+                        <Button DockPanel.Dock="Right" Content="Refresh" Margin="6,0,0,0" ToolTip="Refresh the list of screens and windows"
                                 Command="{Binding RefreshTargetsCommand}" IsEnabled="{Binding CanEditSettings}"
                                 AutomationProperties.Name="Refresh targets" AutomationProperties.AutomationId="RefreshTargets" />
                         <ComboBox ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}"
@@ -50,7 +50,7 @@
                                   AutomationProperties.Name="What to capture" AutomationProperties.AutomationId="Target" />
                     </DockPanel>
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="For a YouTube video, pick the browser window and use theatre or full-screen mode. Keep the mouse off the video, and turn off autoplay." />
+                               Text="For a YouTube video, pick the browser window and use theatre or full-screen mode. Keep the mouse off the video, keep the window fully on screen, and turn off autoplay." />
 
                     <TextBlock Text="Seconds between captures" Style="{StaticResource FieldLabel}" />
                     <TextBox Text="{Binding IntervalText, UpdateSourceTrigger=PropertyChanged}" Width="80" HorizontalAlignment="Left"
@@ -111,7 +111,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                         </Grid.RowDefinitions>
                         <Grid.Resources>
                             <Style TargetType="TextBlock">
@@ -142,6 +142,11 @@
                         </TextBlock>
                         <TextBlock Grid.Row="5" Text="Timing" />
                         <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding TimingText}" AutomationProperties.AutomationId="StatTiming" />
+                        <TextBlock Grid.Row="7" Text="Cleaner versions kept"
+                                   ToolTip="A page saved while the player's controls were showing was swapped for the clean version shown afterwards."
+                                   Visibility="{Binding Stats.Replaced, Converter={StaticResource VisibleIfSet}}" />
+                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Stats.Replaced}" AutomationProperties.AutomationId="StatReplaced"
+                                   Visibility="{Binding Stats.Replaced, Converter={StaticResource VisibleIfSet}}" />
                         <TextBlock Grid.Row="6" Text="Dropped (disk too slow)" Foreground="Firebrick"
                                    Visibility="{Binding Stats.Dropped, Converter={StaticResource VisibleIfSet}}" />
                         <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Stats.Dropped}" Foreground="Firebrick"

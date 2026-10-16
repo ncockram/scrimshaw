@@ -5,6 +5,7 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <AssemblyName>scrimshaw-harness</AssemblyName>
     <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <!-- UseWPF drops System.IO from implicit usings -->

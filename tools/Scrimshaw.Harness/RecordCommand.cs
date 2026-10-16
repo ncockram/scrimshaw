@@ -9,21 +9,25 @@ namespace Scrimshaw.Harness;
 /// <summary>
 /// Records every capture tick of a window (no de-duplication) as a sample for <see cref="ReplayCommand"/>.
 /// Stops after <c>--max</c> seconds, when the window closes, or when its title changes (e.g. YouTube autoplay).
-/// <code>record &lt;outDir&gt; --window "title text" [--interval 1] [--max 900]</code>
+/// <code>record &lt;outDir&gt; (--window "title text" | --hwnd 12345) [--interval 1] [--max 900]</code>
+/// Use <c>--hwnd</c> when the title text could match more than one window.
 /// </summary>
 internal static class RecordCommand
 {
     public static async Task<int> RunAsync(CommandLine cl)
     {
         string outDir = Path.GetFullPath(cl.Arg(0, "outDir"));
-        string match = cl.Get("window") ?? throw new ArgumentException("--window is required");
+        string? match = cl.Get("window");
+        long hwnd = cl.Int("hwnd", 0);
+        if (match is null && hwnd == 0) throw new ArgumentException("--window or --hwnd is required");
         double interval = cl.Double("interval", 1);
         double max = cl.Double("max", 900);
 
-        WindowInfo? window = CaptureTargets.GetWindows().FirstOrDefault(w => w.Title.Contains(match, StringComparison.OrdinalIgnoreCase));
+        WindowInfo? window = CaptureTargets.GetWindows().FirstOrDefault(w =>
+            hwnd != 0 ? w.Handle == new IntPtr(hwnd) : w.Title.Contains(match!, StringComparison.OrdinalIgnoreCase));
         if (window is null)
         {
-            Console.Error.WriteLine($"no window title contains '{match}'");
+            Console.Error.WriteLine(hwnd != 0 ? $"no capturable window with handle {hwnd}" : $"no window title contains '{match}'");
             return 2;
         }
         Directory.CreateDirectory(outDir);

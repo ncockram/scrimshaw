@@ -1,0 +1,11 @@
+{
+  "description": "V3 (https://www.youtube.com/watch?v=Ay8Vauav4yA), Chrome full screen on DISPLAY2, 1 s, 2026-10-16. Cross-fade turns. Frames 1-2 show the paused/controls overlay.",
+  "pages": [
+    { "id": "p1", "first": 3, "last": 39 },
+    { "id": "p2", "first": 40, "last": 65 },
+    { "id": "p3", "first": 66, "last": 86 }
+  ],
+  "ignore": [
+    { "first": 87, "last": 100, "reason": "Fade to black, end screen and next video" }
+  ]
+}

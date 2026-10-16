@@ -50,7 +50,11 @@ public sealed record WindowTarget(WindowInfo Window) : CaptureTarget
     };
 }
 
-/// <summary>Lists what can be captured, and finds a saved target again.</summary>
+/// <summary>
+/// Lists what can be captured, and finds a saved target again. The calling process must be per-monitor DPI
+/// aware (PerMonitorV2 in its manifest): otherwise Windows reports scaled coordinates, which misplaces
+/// monitors when stitching the whole desktop.
+/// </summary>
 public static unsafe class CaptureTargets
 {
     private static readonly HashSet<string> ShellClasses = new(StringComparer.Ordinal) { "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd" };

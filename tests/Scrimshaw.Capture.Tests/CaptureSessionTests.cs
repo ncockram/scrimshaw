@@ -88,6 +88,28 @@ public sealed class CaptureSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_cleaner_version_replaces_the_saved_image_in_place()
+    {
+        using Workspace ws = NewWorkspace();
+        RawImage p1 = Synthetic.Page(1), withControls = Synthetic.WithPlayerControls(p1);
+        var session = new CaptureSession(ws, new ScriptedSource(withControls, withControls, p1, p1, p1, p1), _codec, _time);
+        var events = 0;
+        session.FrameSaved += (_, _) => Interlocked.Increment(ref events);
+
+        session.Start();
+        await TickAsync(session, 6);
+        await session.StopAsync();
+
+        FrameRecord f = Assert.Single(ws.Manifest.Current.Frames);
+        Assert.Equal((1, 1), (session.Stats.Saved, session.Stats.Replaced));
+        Assert.Equal(2, events);
+        RawImage onDisk = _codec.Decode(ws.FullPath(f));
+        Assert.Equal(0, Core.Detection.AreaChange.ChangedFraction(Core.Detection.GrayGrid.FromImage(onDisk), Core.Detection.GrayGrid.FromImage(p1), 8));
+        Assert.Equal(Core.Detection.DHash.ToHex(Core.Detection.DHash.Compute(Core.Detection.GrayGrid.FromImage(p1))), f.DHash);
+        Assert.Empty(Directory.EnumerateFiles(ws.ImagesPath, "*.tmp"));
+    }
+
+    [Fact]
     public async Task Ticks_before_the_first_frame_are_counted_but_not_saved()
     {
         using Workspace ws = NewWorkspace();

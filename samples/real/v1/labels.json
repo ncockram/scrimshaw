@@ -1,0 +1,12 @@
+{
+  "description": "V1 (https://www.youtube.com/watch?v=atYihjjTgAk), Chrome full screen on DISPLAY2, 1 s, 2026-10-16. Frames 1-3 show YouTube's controls overlay after pressing play: saving one counts as a transition.",
+  "pages": [
+    { "id": "p1", "first": 4, "last": 30 },
+    { "id": "p2", "first": 31, "last": 60 },
+    { "id": "p3", "first": 61, "last": 90 },
+    { "id": "p4", "first": 91, "last": 124 }
+  ],
+  "ignore": [
+    { "first": 125, "last": 128, "reason": "'Up next' autoplay countdown, then the next video" }
+  ]
+}

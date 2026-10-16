@@ -215,6 +215,47 @@ public class ChangeDetectorTests
     }
 
     [Fact]
+    public void Player_controls_on_a_newly_saved_page_are_replaced_by_the_clean_version()
+    {
+        var d = new ChangeDetector(Defaults);
+        RawImage p1 = Synthetic.Page(1), withControls = Synthetic.WithPlayerControls(p1);
+        Assert.InRange(AreaChange.ChangedFraction(GrayGrid.FromImage(p1), GrayGrid.FromImage(withControls), Defaults.PixelTolerance), 0.01, Defaults.AreaThreshold);
+
+        // Controls showing for 3 captures (the page is saved during them), then the clean page.
+        var decisions = Feed(d, withControls, withControls, withControls, p1, p1, p1, p1, p1);
+
+        Assert.Equal(DetectionDecision.Save, decisions[1]);
+        Assert.Equal(DetectionDecision.Replace, Assert.Single(decisions.Skip(2), x => x != DetectionDecision.Discard));
+        Assert.Equal(6, decisions.IndexOf(DetectionDecision.Replace)); // the clean version outlasted 3 overlay captures
+    }
+
+    [Fact]
+    public void A_brief_overlay_later_on_does_not_replace_a_clean_page()
+    {
+        var d = new ChangeDetector(Defaults);
+        RawImage p1 = Synthetic.Page(1), withControls = Synthetic.WithPlayerControls(p1);
+        var decisions = Feed(d, p1, p1, p1, p1, p1, withControls, withControls, withControls, p1, p1);
+        Assert.DoesNotContain(DetectionDecision.Replace, decisions);
+    }
+
+    [Fact]
+    public void Keeping_the_longest_shown_version_can_be_turned_off()
+    {
+        var d = new ChangeDetector(Defaults with { KeepLongestShownVersion = false });
+        RawImage p1 = Synthetic.Page(1), withControls = Synthetic.WithPlayerControls(p1);
+        Assert.DoesNotContain(DetectionDecision.Replace, Feed(d, withControls, withControls, p1, p1, p1, p1, p1));
+    }
+
+    [Fact]
+    public void Replacement_becomes_the_reference_for_the_next_page_turn()
+    {
+        var d = new ChangeDetector(Defaults);
+        RawImage p1 = Synthetic.Page(1), withControls = Synthetic.WithPlayerControls(p1), p2 = Synthetic.Page(2);
+        Feed(d, withControls, withControls, p1, p1, p1);
+        Assert.Equal([DetectionDecision.Discard, DetectionDecision.Pending, DetectionDecision.Save], Feed(d, p1, p2, p2));
+    }
+
+    [Fact]
     public void Higher_threshold_ignores_a_half_page_change()
     {
         var d = new ChangeDetector(Defaults with { AreaThreshold = 0.95 });

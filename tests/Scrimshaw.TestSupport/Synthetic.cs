@@ -60,6 +60,14 @@ public static class Synthetic
         return new RawImage(image.Width, image.Height, px);
     }
 
+    /// <summary>A dark bar along the bottom, like a video player's controls: ~2% of the image, as measured on real videos (1–1.4%).</summary>
+    public static RawImage WithPlayerControls(RawImage image)
+    {
+        var px = (byte[])image.Bgra.Clone();
+        Fill(px, image.Width, 0, image.Height - 4, image.Width, 4, 30);
+        return new RawImage(image.Width, image.Height, px);
+    }
+
     /// <summary>A small dark rectangle, like a mouse pointer.</summary>
     public static RawImage WithCursor(RawImage image, int x, int y)
     {

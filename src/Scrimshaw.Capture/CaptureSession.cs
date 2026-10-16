@@ -25,6 +25,7 @@ public enum CaptureStopReason
 /// <param name="Discarded">Captures thrown away as unchanged.</param>
 /// <param name="Dropped">Kept frames lost because the writer fell behind (should stay 0).</param>
 /// <param name="Saved">Frames written to disk.</param>
+/// <param name="Replaced">Saved frames whose image was swapped for a version shown longer, e.g. without player controls (FR-D8).</param>
 /// <param name="LastChangedFraction">The latest capture vs the last saved frame, for the threshold readout.</param>
 /// <param name="MeanDriftMs">Average lateness of ticks against the ideal schedule (FR-C4).</param>
 public sealed record CaptureStats(
@@ -34,12 +35,13 @@ public sealed record CaptureStats(
     int Discarded,
     int Dropped,
     int Saved,
+    int Replaced,
     bool Settling,
     double? LastChangedFraction,
     double MeanDriftMs,
     double MaxDriftMs)
 {
-    public static readonly CaptureStats Empty = new(TimeSpan.Zero, 0, 0, 0, 0, 0, false, null, 0, 0);
+    public static readonly CaptureStats Empty = new(TimeSpan.Zero, 0, 0, 0, 0, 0, 0, false, null, 0, 0);
 }
 
 /// <summary>
@@ -67,6 +69,7 @@ public sealed class CaptureSession : IAsyncDisposable
     private CaptureStopReason _reason = CaptureStopReason.User;
     private Task? _loop;
     private Task? _writer;
+    private FrameRecord? _lastWritten; // writer thread only
     private int _started;
 
     public CaptureSession(Workspace workspace, IFrameSource source, IImageCodec codec, TimeProvider? time = null)
@@ -84,7 +87,7 @@ public sealed class CaptureSession : IAsyncDisposable
     /// <summary>Raised after every tick, on the capture thread.</summary>
     public event EventHandler<CaptureStats>? StatsChanged;
 
-    /// <summary>Raised after each frame is written and recorded, on the writer thread.</summary>
+    /// <summary>Raised after each frame is written (or its image replaced) and recorded, on the writer thread.</summary>
     public event EventHandler<FrameRecord>? FrameSaved;
 
     public CaptureStats Stats
@@ -148,8 +151,8 @@ public sealed class CaptureSession : IAsyncDisposable
                 RawImage? image = _source.Grab();
                 DetectionResult? result = image is null ? null : detector.Process(image);
                 bool dropped = false;
-                if (result is { Decision: DetectionDecision.Save } r)
-                    dropped = !_queue.Writer.TryWrite(new PendingFrame(r.Image!, r.Grid, capturedAt));
+                if (result is { Decision: DetectionDecision.Save or DetectionDecision.Replace } r)
+                    dropped = !_queue.Writer.TryWrite(new PendingFrame(r.Image!, r.Grid, capturedAt, r.Decision == DetectionDecision.Replace));
 
                 CaptureStats stats;
                 lock (_statsLock)
@@ -187,8 +190,14 @@ public sealed class CaptureSession : IAsyncDisposable
             if (Error is not null) continue; // drain without writing after a failure
             try
             {
-                FrameRecord record = Write(frame);
-                lock (_statsLock) _stats = _stats with { Saved = _stats.Saved + 1 };
+                FrameRecord record = frame.Replace && _lastWritten is not null ? Rewrite(_lastWritten.Seq, frame) : Write(frame);
+                _lastWritten = record;
+                lock (_statsLock)
+                {
+                    _stats = frame.Replace
+                        ? _stats with { Replaced = _stats.Replaced + 1 }
+                        : _stats with { Saved = _stats.Saved + 1 };
+                }
                 FrameSaved?.Invoke(this, record);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -218,6 +227,22 @@ public sealed class CaptureSession : IAsyncDisposable
         File.Move(temp, path, overwrite: false);
         _workspace.Manifest.AddFrame(record);
         return record;
+    }
+
+    /// <summary>Overwrites a saved frame's image with a better version of the same page (FR-D8).</summary>
+    private FrameRecord Rewrite(int seq, PendingFrame frame)
+    {
+        FrameRecord current = _workspace.Manifest.Current.Frames.First(f => f.Seq == seq);
+        string path = _workspace.FullPath(current);
+        string temp = path + ".tmp";
+        _codec.Encode(frame.Image, temp, _settings.ImageFormat, _settings.JpegQuality);
+        File.Move(temp, path, overwrite: true);
+        return _workspace.Manifest.UpdateFrame(seq, f => f with
+        {
+            Width = frame.Image.Width,
+            Height = frame.Image.Height,
+            DHash = DHash.ToHex(DHash.Compute(frame.Grid)),
+        });
     }
 
     private void RequestStop(CaptureStopReason reason)
@@ -265,5 +290,5 @@ public sealed class CaptureSession : IAsyncDisposable
         }
     }
 
-    private sealed record PendingFrame(RawImage Image, GrayGrid Grid, DateTimeOffset CapturedAt);
+    private sealed record PendingFrame(RawImage Image, GrayGrid Grid, DateTimeOffset CapturedAt, bool Replace);
 }

@@ -23,6 +23,7 @@ internal static partial class ReplayCommand
             SettleEnabled = cl.Int("settle", defaults.SettleCount) > 0,
             SettleTolerance = cl.Int("settle-tol", defaults.SettleTolerance),
             SettleAreaThreshold = cl.Double("settle-area", defaults.SettleAreaThreshold),
+            KeepLongestShownVersion = !cl.Has("no-longest"),
         };
         bool verbose = cl.Has("verbose");
         string? labelsPath = cl.Get("labels") ?? (File.Exists(Path.Combine(dir, "labels.json")) ? Path.Combine(dir, "labels.json") : null);
@@ -48,7 +49,8 @@ internal static partial class ReplayCommand
         {
             DetectionResult r = detector.Process(codec.Decode(path));
             if (r.Decision == DetectionDecision.Save) saved.Add(number);
-            if (verbose || r.Decision == DetectionDecision.Save)
+            if (r.Decision == DetectionDecision.Replace && saved.Count > 0) saved[^1] = number; // the page's image is now this frame
+            if (verbose || r.Decision is DetectionDecision.Save or DetectionDecision.Replace)
                 Console.WriteLine($"  {number,5}: {r.Decision,-7} changed={r.ChangedFraction * 100,6:F2}%");
         }
         Console.WriteLine($"saved {saved.Count}: [{string.Join(", ", saved)}]");

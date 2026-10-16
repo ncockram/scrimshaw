@@ -12,10 +12,16 @@ public enum DetectionDecision
 
     /// <summary>A new, settled page. Save <see cref="DetectionResult.Image"/>.</summary>
     Save,
+
+    /// <summary>
+    /// A cleaner version of the page saved last: it has now been on screen longer than the saved version.
+    /// Overwrite the last saved frame's image with <see cref="DetectionResult.Image"/> (FR-D8).
+    /// </summary>
+    Replace,
 }
 
 /// <param name="ChangedFraction">This capture vs the last saved frame (1.0 when nothing has been saved yet).</param>
-/// <param name="Image">The capture, when <paramref name="Decision"/> is <see cref="DetectionDecision.Save"/>.</param>
+/// <param name="Image">The capture, when <paramref name="Decision"/> is <see cref="DetectionDecision.Save"/> or <see cref="DetectionDecision.Replace"/>.</param>
 /// <param name="Grid">The capture's grid, reusable by the caller (e.g. for hashing) without recomputing.</param>
 public readonly record struct DetectionResult(DetectionDecision Decision, double ChangedFraction, RawImage? Image, GrayGrid Grid);
 
@@ -28,6 +34,8 @@ public readonly record struct DetectionResult(DetectionDecision Decision, double
 /// Pending: vs lastSaved: same      → Stable, Discard (it was a blip)
 ///          vs candidate: settled   → count++; count ≥ SettleCount → Save
 ///                        moving    → candidate = capture, count = 0
+/// Same page, slightly different version (e.g. player controls gone): count how long each version is shown;
+///          once another version outlasts the saved one → Replace
 /// </code>
 /// </summary>
 public sealed class ChangeDetector
@@ -36,6 +44,11 @@ public sealed class ChangeDetector
     private GrayGrid? _lastSaved;
     private GrayGrid? _candidate;
     private int _settledCount;
+
+    // "Longest shown" tracking for the page saved last (FR-D8).
+    private int _savedTicks;
+    private GrayGrid? _variant;
+    private int _variantTicks;
 
     public ChangeDetector(ChangeDetectionSettings settings)
     {
@@ -52,6 +65,9 @@ public sealed class ChangeDetector
         _lastSaved = lastSaved;
         _candidate = null;
         _settledCount = 0;
+        _savedTicks = int.MaxValue / 2; // the saved image of a resumed workspace isn't second-guessed
+        _variant = null;
+        _variantTicks = 0;
     }
 
     public DetectionResult Process(RawImage capture)
@@ -67,6 +83,11 @@ public sealed class ChangeDetector
             // Unchanged, or a pending change reverted (mouse passed over, controls flashed up).
             _candidate = null;
             _settledCount = 0;
+            if (_settings.KeepLongestShownVersion && _lastSaved is not null && TrackVersion(grid))
+            {
+                _lastSaved = grid;
+                return new(DetectionDecision.Replace, vsSaved, capture, grid);
+            }
             return new(DetectionDecision.Discard, vsSaved, null, grid);
         }
 
@@ -95,9 +116,41 @@ public sealed class ChangeDetector
 
     private DetectionResult SaveNow(RawImage capture, GrayGrid grid, double vsSaved)
     {
+        _savedTicks = _settledCount + 1; // the captures that showed this version while it settled
+        _variant = null;
+        _variantTicks = 0;
         _lastSaved = grid;
         _candidate = null;
         _settledCount = 0;
         return new(DetectionDecision.Save, vsSaved, capture, grid);
+    }
+
+    /// <summary>
+    /// Counts this capture towards the saved version or towards an alternative version of the same page.
+    /// Returns true when the alternative has now been shown for longer, so it should replace the saved image.
+    /// </summary>
+    private bool TrackVersion(GrayGrid grid)
+    {
+        if (AreaChange.ChangedFraction(grid, _lastSaved!, _settings.SettleTolerance) < _settings.SettleAreaThreshold)
+        {
+            _savedTicks++;
+            return false;
+        }
+
+        if (_variant is not null && AreaChange.ChangedFraction(grid, _variant, _settings.SettleTolerance) < _settings.SettleAreaThreshold)
+        {
+            _variantTicks++;
+        }
+        else
+        {
+            _variantTicks = 1;
+        }
+        _variant = grid;
+
+        if (_variantTicks <= _savedTicks) return false;
+        _savedTicks = _variantTicks;
+        _variant = null;
+        _variantTicks = 0;
+        return true;
     }
 }

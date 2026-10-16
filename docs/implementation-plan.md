@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | v1.2 (Phase 1 complete) |
+| Status | v1.3 (Phase 2 complete) |
 | Date | 2026-10-16 |
-| Implements | [requirements.md](requirements.md) v0.3 |
+| Implements | [requirements.md](requirements.md) v0.4 |
 
 **Changes since v0.2:**
 - Development environment surveyed and the stack confirmed against it (§2).
@@ -283,6 +283,18 @@ Each phase lists what gets built, how I verify it, and when it's done.
 
 **Done when** the targets above are met, drift stays within ±10%, and closing the target window mid-capture stops cleanly and keeps the frames.
 
+**Status: complete (2026-10-16).**
+- **Built:** `Scrimshaw.Capture` (targets, WGC and stitched sources, `CaptureSession`), the app shell, TestPlayer, and the Harness `bench`, `record` and `contact` commands. 97 headless tests.
+- **Desktop tests (TestPlayer, 0.5 s interval), all passing:**
+  - every page saved exactly once in every turn style (cut, fade and slide 5/5; half 9/9 including the half-turned states), with no transition frames
+  - average drift about 7 ms, worst 16 ms; nothing dropped
+  - cursor excluded (0.00% change) unless asked for
+  - closing the window stops capture as "target lost" within 4 s
+- **4K benchmark:** detection 21.5 ms per capture; PNG encode 113 ms per saved frame. Passes at 0.5 s.
+- **Real videos** (V1, V2 and V3 recorded full screen, labelled, kept in `samples/real`): **all pass** after FR-D8. Before it, V1 and V2 saved their first page with YouTube's controls showing (F21).
+- **App window** checked at 125% scaling: it renders correctly.
+- **To run the desktop tests (coordinate first):** `dotnet test --project tests/Scrimshaw.Capture.Tests --filter-trait "Category=Desktop"`.
+
 ### Phase 3 — Review and annotation
 **Build**
 - Thumbnail strip, editor (zoom and pan, draw, select, move, resize, delete, labels), undo/redo, keyboard navigation, delete frame, badges, copy from previous, apply to following.
@@ -388,3 +400,14 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | F19 | A test that used Notepad brought up your own saved notes in a monitor capture. | Capture deleted. Tests use only Scrimshaw's own windows (TestPlayer) from now on |
 
 **Phase 0 result: GO.** WGC and PDFsharp 6.2.4 are confirmed. Moved to Phase 2: checking cursor exclusion (F14) and the 4K benchmark.
+
+### Phase 2 findings
+
+| # | Finding | Action |
+|---|---|---|
+| F20 | A process without a DPI-awareness manifest sees monitor coordinates scaled by the main screen's 125%. Placing a window from such a process puts it partly off-screen, and **WGC draws the off-screen part of a window as black**. | The test host is made DPI-aware in code and the Harness gets a manifest. The `CaptureTargets` docs state the requirement. The app hint says to keep the window fully on screen. |
+| F21 | **YouTube shows its controls and title for a few seconds** when playback starts or the mouse moves. The clean page differs from that by only 1.0–1.4%, below the page-turn threshold, so the first page of V1 and V2 was saved with the overlay. | **FR-D8:** keep the version of each page shown longest (`ChangeDetector` Replace; the session rewrites the frame in place). V1 and V2 now pass. |
+| F22 | When a capture's target process is killed, WGC's `GraphicsCaptureItem.Closed` wasn't raised. | Window sources also check `IsWindow`; the target-lost test passes. |
+| F23 | Resizing a window during capture works: frames switch to the new size cleanly. | Confirmed |
+| F24 | V2 shows one system per "page" on a band; each change measured 14–47%. V1 page turns measured 43–60%; full-screen V3, 19–44%. All are far above the 3% threshold. | 3% default kept |
+| F25 | After the video, YouTube's suggestion cards, "Up next" countdown and autoplay all count as changes. | Already covered by the hint (turn off autoplay) and deleting frames in review (FR-A9) |
