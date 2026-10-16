@@ -1,0 +1,11 @@
+{
+  "description": "V3 (https://www.youtube.com/watch?v=Ay8Vauav4yA), Chrome window capture on DISPLAY2, 1 s interval, 2026-10-16. Cross-fade page turns; frame 19 is mid-fade.",
+  "pages": [
+    { "id": "p1", "first": 1, "last": 18 },
+    { "id": "p2", "first": 20, "last": 44 },
+    { "id": "p3", "first": 45, "last": 66 }
+  ],
+  "ignore": [
+    { "first": 67, "last": 75, "reason": "YouTube end screen after the video finishes" }
+  ]
+}

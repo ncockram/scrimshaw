@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- WIC (via WPF imaging) implementation of Core's IImageCodec: PNG/JPEG decode, encode, crop. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Scrimshaw.Core\Scrimshaw.Core.csproj" />
+  </ItemGroup>
+</Project>

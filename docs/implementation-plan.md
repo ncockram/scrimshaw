@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.1 (Phase 0 complete) |
+| Status | v1.2 (Phase 1 complete) |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.3 |
 
@@ -79,12 +79,13 @@ scrimshaw/
 ├─ docs/
 ├─ src/
 │  ├─ Scrimshaw.Core/          # No UI. Workspace, manifest I/O, change detection, export planning and layout
+│  ├─ Scrimshaw.Imaging/       # WIC (WPF imaging) PNG/JPEG codec implementing Core's IImageCodec
 │  ├─ Scrimshaw.Capture/       # WGC wrapper, target enumeration, capture loop
 │  ├─ Scrimshaw.Export/        # PDFsharp rendering, cropping, bookmarks
 │  └─ Scrimshaw.App/           # WPF shell, views, view-models
 ├─ tools/
 │  ├─ Scrimshaw.TestPlayer/    # Synthetic score player (ground truth for capture tests)
-│  └─ Scrimshaw.Harness/       # CLI: replay and tune change detection, benchmarks
+│  └─ Scrimshaw.Harness/       # CLI: replay (score detection against labels), synth (labelled synthetic recordings), render-pdf
 ├─ tests/
 │  ├─ Scrimshaw.Core.Tests/
 │  ├─ Scrimshaw.Export.Tests/
@@ -96,9 +97,9 @@ scrimshaw/
 └─ Scrimshaw.sln
 ```
 
-Dependency direction: `App → Capture, Export → Core`. Tools and tests may reference anything. Core uses no WPF or WinRT types. Pixel buffers cross project boundaries as `RawImage { int Width, Height, Stride; byte[] Bgra; }`.
+Dependency direction: `App → Capture, Export → Imaging → Core`. Tools and tests may reference anything. Core uses no WPF or WinRT types. Pixel buffers cross project boundaries as `RawImage { int Width, Height, Stride; byte[] Bgra; }`.
 
-Tests that need an interactive desktop are marked `[Trait("Category","Desktop")]` and left out of the default run: `dotnet test --filter Category!=Desktop`.
+Tests that need an interactive desktop are marked `[Trait("Category","Desktop")]` and left out of the default run: `dotnet test --solution Scrimshaw.slnx --filter-not-trait "Category=Desktop"`. (xunit v3 runs on Microsoft.Testing.Platform, opted into in `global.json`; the old `--filter` syntax doesn't apply.)
 
 ## 5. Workspace format
 
@@ -258,7 +259,14 @@ Each phase lists what gets built, how I verify it, and when it's done.
   - layout: shared vs fit width, the oversize-crop exception, page breaks, no splits, left alignment, enlargement cap
 - The harness runs on TestPlayer recordings.
 
-**Done when** `dotnet test --filter Category!=Desktop` passes cleanly and the harness reports 0 missed pages on synthetic sequences.
+**Done when** the headless tests pass cleanly and the harness reports 0 missed pages on synthetic sequences.
+
+**Status: complete (2026-10-16).**
+- 71 unit tests pass.
+- Harness `replay` passes on synthetic cut, half, fade, slide and mixed sequences (1920×1080, ±4 noise, cursor blips), and on the real V3 recording: every page saved once, no transition frames saved.
+- With settle detection off, V3 saves its mid-fade frame and misses page 2, so the settle check is necessary.
+- Changes from the plan: a `Scrimshaw.Imaging` project was added (keeps WPF out of Core). The namespace is `Scrimshaw.Core.Workspaces`, so it doesn't clash with the `Workspace` class. The dHash has a 1-level dead-zone so flat areas stay stable under noise.
+- The Capture, Export and App projects are created in their own phases.
 
 ### Phase 2 — Capture engine and capture UI
 **Build**

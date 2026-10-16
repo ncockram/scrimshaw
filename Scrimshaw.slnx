@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Scrimshaw.Core/Scrimshaw.Core.csproj" />
+    <Project Path="src/Scrimshaw.Imaging/Scrimshaw.Imaging.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Scrimshaw.Core.Tests/Scrimshaw.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Scrimshaw.Harness/Scrimshaw.Harness.csproj" />
+  </Folder>
+</Solution>
