@@ -1,0 +1,210 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using Scrimshaw.Capture.Interop;
+using Scrimshaw.Capture.Sources;
+using Scrimshaw.Capture.Targets;
+using Scrimshaw.Core.Detection;
+using Scrimshaw.Core.Imaging;
+using Scrimshaw.Core.Workspaces;
+using Scrimshaw.Imaging;
+
+namespace Scrimshaw.Capture.Tests;
+
+/// <summary>
+/// Real Windows.Graphics.Capture against the TestPlayer window. These open windows, show content on a
+/// monitor and move the mouse, so they only run on request (<c>--filter-trait "Category=Desktop"</c>)
+/// after checking the machine is free (implementation plan §11). Recordings are kept under TestResults/desktop.
+/// </summary>
+[Trait("Category", "Desktop")]
+public sealed partial class DesktopCaptureTests
+{
+    private const int PlayerWidth = 1280, PlayerHeight = 720;
+    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+    private readonly WicImageCodec _codec = new();
+
+    private sealed record StateLog(string Id, string TurnIn, DateTimeOffset ShownAt, DateTimeOffset HiddenAt, string? Reference);
+    private sealed record RunLog(IReadOnlyList<StateLog> States);
+
+    [Theory]
+    [InlineData("cut")]
+    [InlineData("half")]
+    [InlineData("fade")]
+    [InlineData("slide")]
+    public async Task Captures_every_page_once_and_no_transitions(string style)
+    {
+        string runDir = RunDirectory(style);
+        string logPath = Path.Combine(runDir, "player-log.json");
+        string title = "Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8];
+        using Process player = StartPlayer(title, logPath, Path.Combine(runDir, "refs"), style, pages: 5, hold: 3, turn: 0.6);
+        WindowTarget target = await FindWindowAsync(title);
+
+        using Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace"), new WorkspaceSettings { IntervalSeconds = 0.5 });
+        CaptureSession session;
+        using (IFrameSource source = FrameSources.Create(target, includeCursor: false))
+        {
+            session = new CaptureSession(ws, source, _codec);
+            session.Start();
+            await player.WaitForExitAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken);
+            await session.StopAsync();
+        }
+
+        RunLog log = JsonSerializer.Deserialize<RunLog>(await File.ReadAllTextAsync(logPath, TestContext.Current.CancellationToken), Json)!;
+        var refs = log.States.ToDictionary(s => s.Id, s => GrayGrid.FromImage(_codec.Decode(s.Reference!)));
+        var matches = new Dictionary<string, List<int>>();
+        var unmatched = new List<string>();
+        foreach (FrameRecord f in ws.Manifest.Current.Frames)
+        {
+            RawImage image = _codec.Decode(ws.FullPath(f));
+            Assert.Equal((PlayerWidth, PlayerHeight), (image.Width, image.Height));
+            GrayGrid grid = GrayGrid.FromImage(image);
+            var scores = refs.Select(r => (r.Key, Change: AreaChange.ChangedFraction(grid, r.Value, 8))).OrderBy(x => x.Change).ToList();
+            if (scores[0].Change < 0.01)
+                (matches.TryGetValue(scores[0].Key, out var list) ? list : matches[scores[0].Key] = []).Add(f.Seq);
+            else
+                unmatched.Add(string.Create(CultureInfo.InvariantCulture, $"frame {f.Seq} (closest {scores[0].Key} at {scores[0].Change:P1})"));
+        }
+
+        CaptureStats stats = session.Stats;
+        string summary = string.Create(CultureInfo.InvariantCulture,
+            $"{style}: saved {ws.Manifest.Current.Frames.Count}, states {log.States.Count}, matches [{string.Join(", ", matches.Select(m => $"{m.Key}:{string.Join('/', m.Value)}"))}], " +
+            $"unmatched [{string.Join("; ", unmatched)}], drift mean {stats.MeanDriftMs:0.0} ms max {stats.MaxDriftMs:0.0} ms, dropped {stats.Dropped}");
+        TestContext.Current.TestOutputHelper?.WriteLine(summary);
+        await File.WriteAllTextAsync(Path.Combine(runDir, "result.txt"), summary, TestContext.Current.CancellationToken);
+
+        Assert.Empty(unmatched);
+        Assert.All(log.States, s => Assert.True(matches.TryGetValue(s.Id, out var m) && m.Count == 1, $"{s.Id} saved {(matches.TryGetValue(s.Id, out var x) ? x.Count : 0)} times. {summary}"));
+        Assert.Equal(0, stats.Dropped);
+        Assert.True(stats.MeanDriftMs < 50, summary); // FR-C4: ±10% of 500 ms
+    }
+
+    [Fact]
+    public async Task Cursor_is_left_out_unless_asked_for()
+    {
+        string runDir = RunDirectory("cursor");
+        string title = "Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8];
+        using Process player = StartPlayer(title, Path.Combine(runDir, "player-log.json"), null, "cut", pages: 1, hold: 15, turn: 0);
+        WindowTarget target = await FindWindowAsync(title);
+        RectInt32 b = target.Window.Bounds;
+        GetCursorPos(out CursorPoint original);
+        try
+        {
+            var changed = new Dictionary<bool, double>();
+            foreach (bool includeCursor in new[] { false, true })
+            {
+                using IFrameSource source = FrameSources.Create(target, includeCursor);
+                SetCursorPos(b.Left - 50, b.Top - 50); // well outside the window
+                RawImage away = await GrabAfterAsync(source, 700);
+                SetCursorPos(b.Left + b.Width / 3, b.Top + b.Height / 3); // over the music
+                RawImage over = await GrabAfterAsync(source, 700);
+                changed[includeCursor] = AreaChange.ChangedFraction(GrayGrid.FromImage(away), GrayGrid.FromImage(over), 8);
+                _codec.Encode(over, Path.Combine(runDir, $"cursor-{(includeCursor ? "included" : "excluded")}.png"), ImageFormat.Png, 0);
+            }
+            TestContext.Current.TestOutputHelper?.WriteLine($"changed with cursor excluded {changed[false]:P2}, included {changed[true]:P2}");
+            Assert.Equal(0, changed[false]);
+            Assert.True(changed[true] > 0, "with the cursor included, moving it over the window should change the picture");
+        }
+        finally
+        {
+            SetCursorPos(original.X, original.Y);
+            if (!player.HasExited) player.Kill();
+        }
+    }
+
+    [Fact]
+    public async Task Closing_the_window_stops_capture_as_target_lost()
+    {
+        string runDir = RunDirectory("target-lost");
+        string title = "Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8];
+        using Process player = StartPlayer(title, Path.Combine(runDir, "player-log.json"), null, "cut", pages: 1, hold: 30, turn: 0);
+        WindowTarget target = await FindWindowAsync(title);
+        using Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace"), new WorkspaceSettings { IntervalSeconds = 0.5 });
+        using IFrameSource source = FrameSources.Create(target, includeCursor: false);
+        var session = new CaptureSession(ws, source, _codec);
+        session.Start();
+        await Task.Delay(2000, TestContext.Current.CancellationToken);
+
+        player.Kill();
+        CaptureStopReason reason = await session.Completion.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal(CaptureStopReason.TargetLost, reason);
+        Assert.Single(ws.Manifest.Current.Frames);
+    }
+
+    private static async Task<RawImage> GrabAfterAsync(IFrameSource source, int delayMs)
+    {
+        await Task.Delay(delayMs, TestContext.Current.CancellationToken);
+        for (int i = 0; i < 50; i++)
+        {
+            if (source.Grab() is { } image) return image;
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+        throw new TimeoutException("no frame arrived");
+    }
+
+    private static Process StartPlayer(string title, string log, string? refs, string style, int pages, double hold, double turn)
+    {
+        string exe = Path.Combine(RepoRoot(), "tools", "Scrimshaw.TestPlayer", "bin", "Debug", "net10.0-windows", "scrimshaw-testplayer.exe");
+        if (!File.Exists(exe)) Assert.Skip($"Build the TestPlayer first: {exe} not found.");
+
+        // Prefer a secondary monitor so the player doesn't cover the main screen.
+        IReadOnlyList<MonitorInfo> monitors = CaptureTargets.GetMonitors();
+        MonitorInfo m = monitors.FirstOrDefault(x => !x.IsPrimary && x.Bounds.Width >= PlayerWidth && x.Bounds.Height >= PlayerHeight) ?? monitors[0];
+        var args = new List<string>
+        {
+            "--title", title, "--log", log, "--style", style,
+            "--pages", pages.ToString(CultureInfo.InvariantCulture),
+            "--hold", hold.ToString(CultureInfo.InvariantCulture),
+            "--turn", turn.ToString(CultureInfo.InvariantCulture),
+            "--x", (m.Bounds.Left + 40).ToString(CultureInfo.InvariantCulture),
+            "--y", (m.Bounds.Top + 40).ToString(CultureInfo.InvariantCulture),
+            "--w", PlayerWidth.ToString(CultureInfo.InvariantCulture),
+            "--h", PlayerHeight.ToString(CultureInfo.InvariantCulture),
+        };
+        if (refs is not null) args.AddRange(["--refs", refs]);
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        foreach (string a in args) psi.ArgumentList.Add(a);
+        return Process.Start(psi)!;
+    }
+
+    private static async Task<WindowTarget> FindWindowAsync(string title)
+    {
+        for (int i = 0; i < 100; i++)
+        {
+            WindowInfo? w = CaptureTargets.GetWindows().FirstOrDefault(x => x.Title == title && x.Bounds.Width == PlayerWidth);
+            if (w is not null) return new WindowTarget(w);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+        throw new TimeoutException($"TestPlayer window '{title}' didn't appear");
+    }
+
+    private static string RunDirectory(string name)
+    {
+        string dir = Path.Combine(RepoRoot(), "TestResults", "desktop",
+            string.Create(CultureInfo.InvariantCulture, $"{DateTime.Now:yyyyMMdd-HHmmss}-{name}"));
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Scrimshaw.slnx"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("repo root not found");
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CursorPoint
+    {
+        public int X, Y;
+    }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetCursorPos(int x, int y);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetCursorPos(out CursorPoint point);
+}

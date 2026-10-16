@@ -13,5 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Scrimshaw.Core\Scrimshaw.Core.csproj" />
     <ProjectReference Include="..\..\src\Scrimshaw.Imaging\Scrimshaw.Imaging.csproj" />
+    <ProjectReference Include="..\..\src\Scrimshaw.Capture\Scrimshaw.Capture.csproj" />
   </ItemGroup>
 </Project>

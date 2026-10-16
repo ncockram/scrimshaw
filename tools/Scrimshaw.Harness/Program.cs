@@ -2,12 +2,14 @@
 //   scrimshaw-harness replay <framesDir> [--labels labels.json] [--threshold 0.03] [--tol 24]
 //                            [--settle 1] [--settle-tol 8] [--settle-area 0.01] [--verbose]
 //   scrimshaw-harness synth <outDir> [--style cut|half|fade|slide|mixed] [--pages 8] [--hold 5] [--noise 4] [--seed 1]
+//   scrimshaw-harness bench [--width 3840] [--height 2160] [--runs 20] [--interval 0.5]
+//   scrimshaw-harness record <outDir> --window "title text" [--interval 1] [--max 900]
 //   scrimshaw-harness render-pdf <file.pdf> [outDir] [dpi]
 using Scrimshaw.Harness;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("usage: scrimshaw-harness replay <framesDir> [options] | synth <outDir> [options] | render-pdf <file.pdf> [outDir] [dpi]");
+    Console.Error.WriteLine("usage: scrimshaw-harness replay <framesDir> [options] | synth <outDir> [options] | bench [options] | record <outDir> --window <text> [options] | render-pdf <file.pdf> [outDir] [dpi]");
     return 2;
 }
 
@@ -16,6 +18,8 @@ return args[0] switch
 {
     "replay" => ReplayCommand.Run(options),
     "synth" => SynthCommand.Run(options),
+    "bench" => BenchCommand.Run(options),
+    "record" => await RecordCommand.RunAsync(options),
     "render-pdf" => await RenderPdfCommand.RunAsync(options),
     _ => Fail($"unknown command '{args[0]}'"),
 };

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Synthetic "sheet-music video": generated pages turned on a script, with a ground-truth log. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>scrimshaw-testplayer</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+</Project>
