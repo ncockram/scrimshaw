@@ -5,13 +5,13 @@ public sealed record Manifest
 {
     public const int CurrentSchemaVersion = 1;
 
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
     /// <summary>The sequence number the next captured frame will get (FR-C11: numbering continues).</summary>
-    public int NextSequence { get; init; } = 1;
+    public int NextSequence { get; set; } = 1;
 
     /// <summary>Ordered by <see cref="FrameRecord.Seq"/>.</summary>
-    public IReadOnlyList<FrameRecord> Frames { get; init; } = [];
+    public IReadOnlyList<FrameRecord> Frames { get; set; } = [];
 }
 
 public sealed record FrameRecord
@@ -29,9 +29,9 @@ public sealed record FrameRecord
     public required string DHash { get; init; }
 
     /// <summary>Hidden from review and export (FR-A9); the image file is kept.</summary>
-    public bool Deleted { get; init; }
+    public bool Deleted { get; set; }
 
-    public IReadOnlyList<BoxRecord> Boxes { get; init; } = [];
+    public IReadOnlyList<BoxRecord> Boxes { get; set; } = [];
 }
 
 /// <summary>A region to export, in the frame's own pixels (FR-A10).</summary>
@@ -44,7 +44,7 @@ public sealed record BoxRecord
     public required int H { get; init; }
 
     /// <summary>Optional; labelled boxes become PDF bookmarks (FR-A5, FR-P10).</summary>
-    public string? Label { get; init; }
+    public string? Label { get; set; }
 
     /// <summary>Creation order within the frame; export order follows it (FR-P2).</summary>
     public required int Order { get; init; }

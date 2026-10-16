@@ -20,13 +20,13 @@ public sealed record CaptureTargetDescriptor
     public required CaptureTargetKind Kind { get; init; }
 
     /// <summary>For <see cref="CaptureTargetKind.Monitor"/>: the device name, e.g. <c>\\.\DISPLAY1</c>.</summary>
-    public string? MonitorDeviceName { get; init; }
+    public string? MonitorDeviceName { get; set; }
 
     /// <summary>For <see cref="CaptureTargetKind.Window"/>: owning process name, e.g. <c>chrome</c>.</summary>
-    public string? WindowProcessName { get; init; }
+    public string? WindowProcessName { get; set; }
 
     /// <summary>For <see cref="CaptureTargetKind.Window"/>: the title when the target was chosen.</summary>
-    public string? WindowTitle { get; init; }
+    public string? WindowTitle { get; set; }
 }
 
 /// <summary>Contents of <c>scrimshaw.json</c> (FR-W2).</summary>
@@ -35,14 +35,14 @@ public sealed record WorkspaceSettings
     public const int CurrentSchemaVersion = 1;
     public const double MinIntervalSeconds = 0.25;
 
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
-    public CaptureTargetDescriptor? Target { get; init; }
-    public double IntervalSeconds { get; init; } = 1.0;
-    public bool IncludeCursor { get; init; }
-    public ChangeDetectionSettings Detection { get; init; } = new();
-    public ImageFormat ImageFormat { get; init; } = ImageFormat.Png;
-    public int JpegQuality { get; init; } = 90;
-    public ExportOptions Export { get; init; } = new();
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+    public CaptureTargetDescriptor? Target { get; set; }
+    public double IntervalSeconds { get; set; } = 1.0;
+    public bool IncludeCursor { get; set; }
+    public ChangeDetectionSettings Detection { get; set; } = new();
+    public ImageFormat ImageFormat { get; set; } = ImageFormat.Png;
+    public int JpegQuality { get; set; } = 90;
+    public ExportOptions Export { get; set; } = new();
 
     /// <exception cref="ArgumentException">A value is out of range.</exception>
     public void Validate()

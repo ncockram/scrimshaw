@@ -15,6 +15,22 @@ public interface IDialogService
     void ShowError(string title, string message);
 }
 
+/// <summary>Opens files and folders with Windows (so tests can check what would be opened).</summary>
+public interface IShellService
+{
+    void Open(string path);
+    void ShowInFolder(string path);
+}
+
+public sealed class ShellService : IShellService
+{
+    public void Open(string path) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+
+    public void ShowInFolder(string path) =>
+        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"")?.Dispose();
+}
+
 /// <summary>Runs work on the UI thread.</summary>
 public interface IUiDispatcher
 {

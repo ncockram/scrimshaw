@@ -3,6 +3,7 @@
     <Project Path="src/Scrimshaw.App/Scrimshaw.App.csproj" />
     <Project Path="src/Scrimshaw.Capture/Scrimshaw.Capture.csproj" />
     <Project Path="src/Scrimshaw.Core/Scrimshaw.Core.csproj" />
+    <Project Path="src/Scrimshaw.Export/Scrimshaw.Export.csproj" />
     <Project Path="src/Scrimshaw.Imaging/Scrimshaw.Imaging.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -10,6 +11,7 @@
     <Project Path="tests/Scrimshaw.App.UiTests/Scrimshaw.App.UiTests.csproj" />
     <Project Path="tests/Scrimshaw.Capture.Tests/Scrimshaw.Capture.Tests.csproj" />
     <Project Path="tests/Scrimshaw.Core.Tests/Scrimshaw.Core.Tests.csproj" />
+    <Project Path="tests/Scrimshaw.Export.Tests/Scrimshaw.Export.Tests.csproj" />
     <Project Path="tests/Scrimshaw.TestSupport/Scrimshaw.TestSupport.csproj" />
   </Folder>
   <Folder Name="/tools/">

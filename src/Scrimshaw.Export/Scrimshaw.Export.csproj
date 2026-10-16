@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- PDF export (FR-P1–P10): crops, stacked layout, captions, bookmarks. PDFsharp 6.2.x only: 6.5+ is AGPL (plan F2). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <InternalsVisibleTo Include="Scrimshaw.Export.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PDFsharp" />
+    <ProjectReference Include="..\Scrimshaw.Core\Scrimshaw.Core.csproj" />
+    <ProjectReference Include="..\Scrimshaw.Imaging\Scrimshaw.Imaging.csproj" />
+  </ItemGroup>
+</Project>

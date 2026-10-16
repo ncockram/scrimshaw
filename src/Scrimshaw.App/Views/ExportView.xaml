@@ -1,0 +1,115 @@
+<UserControl x:Class="Scrimshaw.App.Views.ExportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Scrimshaw.App.ViewModels"
+             xmlns:views="clr-namespace:Scrimshaw.App.Views"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ExportViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Options -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="12" IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
+                <TextBlock Text="PDF layout" Style="{StaticResource SectionHeader}" />
+
+                <TextBlock Text="Arrangement" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                <RadioButton Content="Stacked: several crops per page" IsChecked="{Binding IsStacked}" AutomationProperties.AutomationId="LayoutStacked" />
+                <RadioButton Content="One crop per page" Margin="0,4,0,0" IsChecked="{Binding IsStacked, Converter={StaticResource InverseBool}}"
+                             AutomationProperties.AutomationId="LayoutOnePerPage" />
+
+                <TextBlock Text="Size" Style="{StaticResource FieldLabel}" />
+                <RadioButton Content="Same scale for every crop (staves stay one size)" IsChecked="{Binding IsSharedScale}"
+                             AutomationProperties.AutomationId="ScaleShared" />
+                <RadioButton Content="Each crop fills the page width" Margin="0,4,0,0" IsChecked="{Binding IsSharedScale, Converter={StaticResource InverseBool}}"
+                             AutomationProperties.AutomationId="ScaleFitWidth" />
+
+                <TextBlock Text="Paper" Style="{StaticResource FieldLabel}" />
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Content="Letter" IsChecked="{Binding IsA4, Converter={StaticResource InverseBool}}" AutomationProperties.AutomationId="PaperLetter" />
+                    <RadioButton Content="A4" Margin="16,0,0,0" IsChecked="{Binding IsA4}" AutomationProperties.AutomationId="PaperA4" />
+                    <CheckBox Content="Landscape" Margin="24,0,0,0" IsChecked="{Binding IsLandscape}" AutomationProperties.AutomationId="Landscape" />
+                </StackPanel>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Margins" VerticalAlignment="Center" Margin="0,0,10,4" />
+                    <TextBox Grid.Column="1" Text="{Binding MarginText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"
+                             AutomationProperties.Name="Margins" AutomationProperties.AutomationId="Margin" />
+                    <TextBlock Grid.Column="2" Text="{Binding Unit}" VerticalAlignment="Center" Margin="6,0,0,4" />
+                    <TextBlock Grid.Row="1" Text="Gap between crops" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding GapText, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Gap between crops" AutomationProperties.AutomationId="Gap" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Unit}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                </Grid>
+
+                <TextBlock Style="{StaticResource FieldLabel}">
+                    <Run Text="Enlarge small crops at most" />
+                    <Run Text="{Binding MaxUpscale, StringFormat={}{0:0.#}×, Mode=OneWay}" FontWeight="SemiBold" />
+                </TextBlock>
+                <Slider Minimum="1" Maximum="4" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding MaxUpscale}"
+                        AutomationProperties.Name="Maximum enlargement" />
+
+                <CheckBox Content="Caption under each crop (frame, time, label)" Margin="0,12,0,0" IsChecked="{Binding Captions}"
+                          AutomationProperties.AutomationId="Captions" />
+
+                <TextBlock Text="{Binding OptionsError}" Style="{StaticResource ErrorText}"
+                           Visibility="{Binding OptionsError, Converter={StaticResource VisibleIfSet}}" />
+
+                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,16,0,0" AutomationProperties.AutomationId="ExportSummary" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Preview and export -->
+        <DockPanel Grid.Column="1">
+            <Border DockPanel.Dock="Top" Padding="12,8" BorderThickness="0,0,0,1" BorderBrush="{x:Static SystemColors.ActiveBorderBrush}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Export PDF" FontWeight="SemiBold" Padding="16,6" Command="{Binding ExportCommand}"
+                                AutomationProperties.AutomationId="ExportPdf" />
+                        <Button Content="Cancel" Margin="8,0,0,0" Command="{Binding CancelCommand}"
+                                Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Content="Open PDF" Margin="16,0,0,0" Command="{Binding OpenPdfCommand}" AutomationProperties.AutomationId="OpenPdf" />
+                        <Button Content="Open folder" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" AutomationProperties.AutomationId="OpenFolder" />
+                    </StackPanel>
+                    <ProgressBar Height="6" Margin="0,8,0,0" Maximum="100" Value="{Binding ProgressPercent}"
+                                 Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding Result}" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="ExportResult"
+                               Visibility="{Binding Result, Converter={StaticResource VisibleIfSet}}" />
+                </StackPanel>
+            </Border>
+            <ScrollViewer Background="#FFE8E8E8" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Pages}" Margin="12" AutomationProperties.AutomationId="Preview">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:PreviewPage}">
+                            <views:PagePreview Page="{Binding}" PreviewWidth="300" Margin="8">
+                                <views:PagePreview.Effect>
+                                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.25" />
+                                </views:PagePreview.Effect>
+                            </views:PagePreview>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>

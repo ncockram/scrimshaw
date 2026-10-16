@@ -415,3 +415,23 @@ public class WorkspaceTests
         return frame;
     }
 }
+
+public class SettingsCompatibilityTests
+{
+    [Fact]
+    public void Settings_written_by_an_older_version_get_defaults_for_missing_fields()
+    {
+        using var dir = new TempDir();
+        Directory.CreateDirectory(dir.Path);
+        string path = dir.Sub(Workspace.SettingsFileName);
+        File.WriteAllText(path, """{ "schemaVersion": 1, "detection": { "areaThreshold": 0.05 } }""");
+
+        WorkspaceSettings s = ScrimshawJson.ReadSettings(path);
+
+        Assert.NotNull(s.Export);
+        Assert.Equal(Export.ExportLayout.Stacked, s.Export.Layout);
+        Assert.Equal(0.05, s.Detection.AreaThreshold);
+        Assert.True(s.Detection.KeepLongestShownVersion); // added in Phase 2
+        Assert.Equal(1.0, s.IntervalSeconds);
+    }
+}

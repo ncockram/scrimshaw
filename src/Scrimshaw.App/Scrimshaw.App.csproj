@@ -18,5 +18,6 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <ProjectReference Include="..\Scrimshaw.Capture\Scrimshaw.Capture.csproj" />
+    <ProjectReference Include="..\Scrimshaw.Export\Scrimshaw.Export.csproj" />
   </ItemGroup>
 </Project>

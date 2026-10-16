@@ -6,8 +6,11 @@ namespace Scrimshaw.Core.Workspaces;
 [JsonSourceGenerationOptions(
     WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true,
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+// Optional properties use `set`, not `init`: source-generated deserialisation sets every missing init-only
+// property to null/0, which would wipe the defaults of fields added in later versions (Phase 4 finding F27).
 [JsonSerializable(typeof(WorkspaceSettings))]
 [JsonSerializable(typeof(Manifest))]
 internal sealed partial class ScrimshawJsonContext : JsonSerializerContext;

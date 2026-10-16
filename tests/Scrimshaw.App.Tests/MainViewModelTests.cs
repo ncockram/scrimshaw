@@ -113,6 +113,12 @@ public sealed class MainViewModelTests : IAsyncDisposable
         }
     }
 
+    private static async Task UntilAsync(Func<bool> condition)
+    {
+        for (int i = 0; i < 500 && !condition(); i++)
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+    }
+
     [Theory]
     [InlineData("1", true)]
     [InlineData("0.5", true)]
@@ -171,6 +177,7 @@ public sealed class MainViewModelTests : IAsyncDisposable
         await TickAsync(4);
         await _vm.StopCaptureCommand.ExecuteAsync(null);
         await _capture.Last!.Completion;
+        await UntilAsync(() => !_vm.IsCapturing); // the view-model reacts to completion on its own continuation
 
         Assert.False(_vm.IsCapturing);
         Assert.Equal(2, _vm.FrameCount);
@@ -192,6 +199,7 @@ public sealed class MainViewModelTests : IAsyncDisposable
         _capture.LastSource!.IsClosed = true;
         _time.Advance(TimeSpan.FromSeconds(1));
         await _capture.Last!.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await UntilAsync(() => !_vm.IsCapturing);
 
         Assert.False(_vm.IsCapturing);
         Assert.Contains("went away", _vm.StatusMessage, StringComparison.Ordinal);

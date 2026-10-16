@@ -30,17 +30,20 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly ITargetProvider _targets;
     private readonly ICaptureService _capture;
     private readonly IThumbnailService _thumbnails;
+    private readonly IShellService _shell;
     private Workspace? _workspace;
     private CaptureSession? _session;
     private int _framesAtStart;
 
-    public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture, IThumbnailService? thumbnails = null)
+    public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture,
+        IThumbnailService? thumbnails = null, IShellService? shell = null)
     {
         _dialogs = dialogs;
         _ui = ui;
         _targets = targets;
         _capture = capture;
         _thumbnails = thumbnails ?? NoThumbnails.Instance;
+        _shell = shell ?? new ShellService();
         IntervalText = FormatInterval(1.0);
         ThresholdPercent = 3;
         JpegQuality = 90;
@@ -109,7 +112,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty]
     public partial ReviewViewModel? Review { get; private set; }
 
-    /// <summary>0 = Capture, 1 = Review.</summary>
+    /// <summary>The Export PDF tab for the open workspace (Phase 4).</summary>
+    [ObservableProperty]
+    public partial ExportViewModel? ExportTab { get; private set; }
+
+    /// <summary>0 = Capture, 1 = Review, 2 = Export.</summary>
     [ObservableProperty]
     public partial int SelectedTab { get; set; }
 
@@ -226,6 +233,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (_session is { } s) await s.StopAsync();
         Review?.Dispose();
         Review = null;
+        ExportTab?.Dispose();
+        ExportTab = null;
         if (_workspace is not null) SaveSettingsQuietly();
         _workspace?.Dispose();
     }
@@ -261,11 +270,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (_workspace is not null) SaveSettingsQuietly();
         Review?.Dispose();
+        ExportTab?.Dispose();
         _workspace?.Dispose();
         _workspace = ws;
         WorkspacePath = ws.Root;
         Review = new ReviewViewModel(ws, _thumbnails, _ui);
         Review.Message += (_, message) => StatusMessage = message;
+        ExportTab = new ExportViewModel(ws, _ui, _shell, _dialogs);
         WorkspaceSettings s = ws.Settings;
         IntervalText = FormatInterval(s.IntervalSeconds);
         ThresholdPercent = s.Detection.AreaThreshold * 100;

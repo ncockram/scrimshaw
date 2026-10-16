@@ -27,7 +27,8 @@ public partial class App : Application
             new DispatcherUi(Dispatcher),
             new TargetProvider(),
             new CaptureService(new WicImageCodec()),
-            _thumbnails);
+            _thumbnails,
+            new ShellService());
         window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();

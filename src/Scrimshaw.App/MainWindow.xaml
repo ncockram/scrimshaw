@@ -182,6 +182,9 @@
             <TabItem Header="  Review and box  " IsEnabled="{Binding HasWorkspace}" AutomationProperties.AutomationId="TabReview">
                 <views:ReviewView DataContext="{Binding Review}" />
             </TabItem>
+            <TabItem Header="  Export PDF  " IsEnabled="{Binding HasWorkspace}" AutomationProperties.AutomationId="TabExport">
+                <views:ExportView DataContext="{Binding ExportTab}" />
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

@@ -17,7 +17,7 @@
     <PackageReference Include="FlaUI.UIA3" />
     <ProjectReference Include="..\..\src\Scrimshaw.Core\Scrimshaw.Core.csproj" />
     <ProjectReference Include="..\..\src\Scrimshaw.Imaging\Scrimshaw.Imaging.csproj" />
-    <!-- Build order only: the tests launch the app's exe. -->
-    <ProjectReference Include="..\..\src\Scrimshaw.App\Scrimshaw.App.csproj" ReferenceOutputAssembly="false" />
+    <!-- The tests launch the app's exe, built with the solution. No project reference: a build-order-only
+         reference made MSBuild compile the app's XAML twice in parallel, colliding in obj/ (Phase 4). -->
   </ItemGroup>
 </Project>

@@ -129,7 +129,7 @@ One workspace holds one video.
       "file": "images/frame_00001.png",
       "capturedAt": "2026-10-16T15:02:11.512Z",
       "width": 1920, "height": 1080,
-      "dhash": "a3f09c1b7e22d410",
+      "dHash": "a3f09c1b7e22d410",
       "deleted": false,
       "boxes": [
         { "id": "b1", "x": 412, "y": 18, "w": 1096, "h": 1040, "label": "Mvt. I – Allegro", "order": 0 }
