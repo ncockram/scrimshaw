@@ -10,5 +10,6 @@
     <ProjectReference Include="..\Scrimshaw.Core\Scrimshaw.Core.csproj" />
     <ProjectReference Include="..\Scrimshaw.Imaging\Scrimshaw.Imaging.csproj" />
     <InternalsVisibleTo Include="Scrimshaw.Capture.Tests" />
+    <InternalsVisibleTo Include="Scrimshaw.App.Tests" />
   </ItemGroup>
 </Project>

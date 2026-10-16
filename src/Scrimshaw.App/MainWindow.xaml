@@ -1,0 +1,174 @@
+<Window x:Class="Scrimshaw.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Scrimshaw.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="Scrimshaw" Width="1100" Height="740" MinWidth="900" MinHeight="600"
+        AutomationProperties.AutomationId="MainWindow">
+    <DockPanel>
+        <!-- Workspace bar -->
+        <Border DockPanel.Dock="Top" Padding="12,8" BorderThickness="0,0,0,1"
+                BorderBrush="{x:Static SystemColors.ActiveBorderBrush}">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" Content="New workspace…" Command="{Binding NewWorkspaceCommand}"
+                        AutomationProperties.AutomationId="NewWorkspace" />
+                <Button DockPanel.Dock="Left" Content="Open workspace…" Margin="8,0,0,0" Command="{Binding OpenWorkspaceCommand}"
+                        AutomationProperties.AutomationId="OpenWorkspace" />
+                <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Text="{Binding WorkspacePath, TargetNullValue='No workspace open. Create a new one for each video.'}"
+                           ToolTip="{Binding WorkspacePath}" AutomationProperties.AutomationId="WorkspacePath" />
+            </DockPanel>
+        </Border>
+
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" AutomationProperties.AutomationId="StatusMessage" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Capture panel -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="12" IsEnabled="{Binding HasWorkspace}">
+                    <TextBlock Text="Capture" Style="{StaticResource SectionHeader}" />
+
+                    <TextBlock Text="What to capture" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="↻" Margin="6,0,0,0" ToolTip="Refresh the list"
+                                Command="{Binding RefreshTargetsCommand}" IsEnabled="{Binding CanEditSettings}"
+                                AutomationProperties.Name="Refresh targets" AutomationProperties.AutomationId="RefreshTargets" />
+                        <ComboBox ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}"
+                                  DisplayMemberPath="DisplayName" IsEnabled="{Binding CanEditSettings}"
+                                  AutomationProperties.Name="What to capture" AutomationProperties.AutomationId="Target" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="For a YouTube video, pick the browser window and use theatre or full-screen mode. Keep the mouse off the video, and turn off autoplay." />
+
+                    <TextBlock Text="Seconds between captures" Style="{StaticResource FieldLabel}" />
+                    <TextBox Text="{Binding IntervalText, UpdateSourceTrigger=PropertyChanged}" Width="80" HorizontalAlignment="Left"
+                             IsEnabled="{Binding CanEditSettings}"
+                             AutomationProperties.Name="Seconds between captures" AutomationProperties.AutomationId="Interval" />
+                    <TextBlock Text="{Binding IntervalError}" Style="{StaticResource ErrorText}"
+                               Visibility="{Binding IntervalError, Converter={StaticResource VisibleIfSet}}" />
+
+                    <TextBlock Style="{StaticResource FieldLabel}">
+                        <Run Text="New page when at least" />
+                        <Run Text="{Binding ThresholdPercent, StringFormat={}{0:0}%, Mode=OneWay}" FontWeight="SemiBold" />
+                        <Run Text="of the picture changes" />
+                    </TextBlock>
+                    <Slider Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding ThresholdPercent}" IsEnabled="{Binding CanEditSettings}"
+                            AutomationProperties.Name="Change threshold percent" AutomationProperties.AutomationId="Threshold" />
+                    <ProgressBar Height="6" Margin="0,6,0,0" Minimum="0" Maximum="30"
+                                 Value="{Binding LastChangePercent, Mode=OneWay, TargetNullValue=0}"
+                                 AutomationProperties.Name="Last change" />
+                    <TextBlock Text="{Binding LastChangeText}" Style="{StaticResource Hint}" AutomationProperties.AutomationId="LastChange" />
+
+                    <TextBlock Text="Image format" Style="{StaticResource FieldLabel}" />
+                    <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanChangeFormat}">
+                        <RadioButton Content="PNG (lossless)" IsChecked="{Binding IsJpeg, Converter={StaticResource InverseBool}}"
+                                     AutomationProperties.AutomationId="FormatPng" />
+                        <RadioButton Content="JPEG (smaller)" Margin="16,0,0,0" IsChecked="{Binding IsJpeg}"
+                                     AutomationProperties.AutomationId="FormatJpeg" />
+                    </StackPanel>
+                    <DockPanel Margin="0,6,0,0" Visibility="{Binding IsJpeg, Converter={StaticResource BoolToVisibility}}"
+                               IsEnabled="{Binding CanChangeFormat}">
+                        <TextBlock DockPanel.Dock="Left" Text="Quality" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding JpegQuality}" Width="28" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider Minimum="50" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding JpegQuality}"
+                                AutomationProperties.Name="JPEG quality" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource Hint}" Text="The format can't change once the workspace has frames."
+                               Visibility="{Binding FrameCount, Converter={StaticResource VisibleIfSet}}" />
+
+                    <CheckBox Content="Include the mouse pointer" Margin="0,12,0,0" IsChecked="{Binding IncludeCursor}"
+                              IsEnabled="{Binding CanEditSettings}" AutomationProperties.AutomationId="IncludeCursor" />
+
+                    <Grid Margin="0,16,0,0">
+                        <Button Content="Start capture" FontWeight="SemiBold" Padding="10,8"
+                                Command="{Binding StartCaptureCommand}"
+                                Visibility="{Binding IsCapturing, Converter={StaticResource HiddenIfTrue}}"
+                                AutomationProperties.AutomationId="StartCapture" />
+                        <Button Content="Stop capture" FontWeight="SemiBold" Padding="10,8"
+                                Command="{Binding StopCaptureCommand}"
+                                Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}"
+                                AutomationProperties.AutomationId="StopCapture" />
+                    </Grid>
+                    <TextBlock x:Name="HotkeyHint" Style="{StaticResource Hint}" Text="Ctrl+Alt+S starts and stops capture from any app." />
+
+                    <TextBlock Text="This capture" Style="{StaticResource SectionHeader}" Margin="0,20,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                        </Grid.RowDefinitions>
+                        <Grid.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Margin" Value="0,2,12,2" />
+                            </Style>
+                        </Grid.Resources>
+                        <TextBlock Grid.Row="0" Text="Time" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ElapsedText}" AutomationProperties.AutomationId="StatElapsed" />
+                        <TextBlock Grid.Row="1" Text="Captures" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Stats.Attempts}" AutomationProperties.AutomationId="StatAttempts" />
+                        <TextBlock Grid.Row="2" Text="New pages saved" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Stats.Saved}" AutomationProperties.AutomationId="StatSaved" />
+                        <TextBlock Grid.Row="3" Text="Unchanged, skipped" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Stats.Discarded}" AutomationProperties.AutomationId="StatDiscarded" />
+                        <TextBlock Grid.Row="4" Text="Page settling" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" AutomationProperties.AutomationId="StatSettling">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="no" />
+                                    <Setter Property="Margin" Value="0,2,12,2" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Stats.Settling}" Value="True">
+                                            <Setter Property="Text" Value="yes, waiting for it to stop changing" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Grid.Row="5" Text="Timing" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding TimingText}" AutomationProperties.AutomationId="StatTiming" />
+                        <TextBlock Grid.Row="6" Text="Dropped (disk too slow)" Foreground="Firebrick"
+                                   Visibility="{Binding Stats.Dropped, Converter={StaticResource VisibleIfSet}}" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Stats.Dropped}" Foreground="Firebrick"
+                                   Visibility="{Binding Stats.Dropped, Converter={StaticResource VisibleIfSet}}" />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Latest frame -->
+            <DockPanel Grid.Column="1" Margin="12">
+                <TextBlock DockPanel.Dock="Top" Style="{StaticResource SectionHeader}">
+                    <Run Text="Latest saved frame" />
+                    <Run Text="{Binding LatestFrameSize, Mode=OneWay, StringFormat=({0})}" FontWeight="Normal" />
+                    <Run Text="·" FontWeight="Normal" />
+                    <Run Text="{Binding FrameCount, Mode=OneWay}" FontWeight="Normal" />
+                    <Run Text="frames in this workspace" FontWeight="Normal" />
+                </TextBlock>
+                <Border BorderThickness="1" BorderBrush="{x:Static SystemColors.ActiveBorderBrush}" Background="#FFF4F4F4">
+                    <Grid>
+                        <Image Source="{Binding LatestFramePath, Converter={StaticResource PathToImage}}" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.AutomationId="LatestFrame" />
+                        <TextBlock Text="Frames appear here as pages are captured." HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Style="{StaticResource Hint}"
+                                   Visibility="{Binding LatestFramePath, Converter={StaticResource VisibleIfUnset}}" />
+                    </Grid>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

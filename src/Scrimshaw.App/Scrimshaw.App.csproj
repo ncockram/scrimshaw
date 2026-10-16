@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Scrimshaw</AssemblyName>
+    <RootNamespace>Scrimshaw.App</RootNamespace>
+    <!-- LibraryImport (global hotkey) generates unsafe marshalling code -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from implicit usings -->
+    <Using Include="System.IO" />
+    <InternalsVisibleTo Include="Scrimshaw.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <ProjectReference Include="..\Scrimshaw.Capture\Scrimshaw.Capture.csproj" />
+  </ItemGroup>
+</Project>
