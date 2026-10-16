@@ -1,9 +1,9 @@
 using Scrimshaw.Core.Imaging;
 
-namespace Scrimshaw.Core.Tests;
+namespace Scrimshaw.TestSupport;
 
 /// <summary>Generated "score page" frames for detection tests: staff lines plus noteheads, seeded per page.</summary>
-internal static class Synthetic
+public static class Synthetic
 {
     public const int Width = 320;
     public const int Height = 180;

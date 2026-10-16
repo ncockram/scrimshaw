@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windows.Graphics.Capture sources, target enumeration and the capture loop. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" />
+    <ProjectReference Include="..\Scrimshaw.Core\Scrimshaw.Core.csproj" />
+    <ProjectReference Include="..\Scrimshaw.Imaging\Scrimshaw.Imaging.csproj" />
+    <InternalsVisibleTo Include="Scrimshaw.Capture.Tests" />
+  </ItemGroup>
+</Project>

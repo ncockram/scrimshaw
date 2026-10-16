@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shared test helpers: synthetic score frames and temp folders. Not a test project itself. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Scrimshaw.Core\Scrimshaw.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,5 +1,6 @@
 using Scrimshaw.Core.Detection;
 using Scrimshaw.Core.Imaging;
+using Scrimshaw.TestSupport;
 
 namespace Scrimshaw.Core.Tests;
 

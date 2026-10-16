@@ -130,6 +130,10 @@ public sealed partial class Workspace : IDisposable
         var recovered = new List<int>();
         var unreadable = new List<string>();
 
+        // A ".tmp" image is a frame whose write never finished; the manifest never referenced it.
+        foreach (string partial in Directory.EnumerateFiles(Path.Combine(root, ImagesFolder), "*.tmp"))
+            File.Delete(partial);
+
         foreach (string file in Directory.EnumerateFiles(Path.Combine(root, ImagesFolder)).Order(StringComparer.OrdinalIgnoreCase))
         {
             Match match = FrameFileRegex().Match(Path.GetFileName(file));

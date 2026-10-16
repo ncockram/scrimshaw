@@ -2,11 +2,14 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <OutputType>Exe</OutputType>
     <!-- Test method names use underscores for readability. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <IsSharedTestSupport Condition="'$(MSBuildProjectName)' == 'Scrimshaw.TestSupport'">true</IsSharedTestSupport>
   </PropertyGroup>
-  <ItemGroup>
+  <PropertyGroup Condition="'$(IsSharedTestSupport)' != 'true'">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsSharedTestSupport)' != 'true'">
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

@@ -3,21 +3,9 @@ using Microsoft.Extensions.Time.Testing;
 using Scrimshaw.Core.Export;
 using Scrimshaw.Core.Imaging;
 using Scrimshaw.Core.Workspaces;
+using Scrimshaw.TestSupport;
 
 namespace Scrimshaw.Core.Tests;
-
-/// <summary>A temp folder deleted after the test.</summary>
-internal sealed class TempDir : IDisposable
-{
-    public string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "scrimshaw-tests", Guid.NewGuid().ToString("N"));
-
-    public string Sub(string name) => System.IO.Path.Combine(Path, name);
-
-    public void Dispose()
-    {
-        if (Directory.Exists(Path)) Directory.Delete(Path, recursive: true);
-    }
-}
 
 /// <summary>
 /// Stand-in for the WIC codec. Files hold "WxH"; anything else fails to decode, like a half-written image.
