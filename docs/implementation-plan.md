@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.3 (Phase 2 complete) |
+| Status | v1.4 (Phase 3 built; awaiting your checkpoint) |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 
@@ -305,6 +305,14 @@ Each phase lists what gets built, how I verify it, and when it's done.
 - Kill the process mid-session, reopen, and confirm no finished edits are lost.
 
 **Done when** the tests pass and the screenshots show the boxes in the right places at 100% and 125% DPI. **→ Checkpoint: you try the capture and annotation workflow yourself.**
+
+**Status: built and verified (2026-10-16); waiting for your checkpoint.**
+- **Core:** `BoxGeometry` and `AnnotationEditor`, with one undo history whose entries record their frame, so undo jumps back to it. This covers the per-frame undo in the requirements, and "apply to following" undoes in one step.
+- **App:** Capture and Review tabs; thumbnail strip; `AnnotationSurface` (draw, move/resize handles, zoom, pan, fit); box list and labels; shortcuts; background thumbnails.
+- **Tests:** 137 headless (geometry, editor, review view-model including a dispatcher that queues like WPF's).
+- **UI tests (FlaUI, desktop) pass:** draw a box with the real mouse → label → apply to following → step frames → reopen and check the manifest. Killing the app 1 s after an edit loses nothing. Screenshots at 125% and 100% show boxes in the right place.
+- **Fixed from the UI run:** the drawing surface had no UI Automation peer (invisible to screen readers and tests); the window was taller than a 1080p screen at 125%.
+- Run UI tests (coordinate first): `dotnet test --project tests/Scrimshaw.App.UiTests`.
 
 ### Phase 4 — PDF export
 **Build**

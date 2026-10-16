@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -130,6 +131,9 @@ public sealed class AnnotationSurface : FrameworkElement
 
     /// <summary>Maps frame pixels to a point on this control.</summary>
     public Point ToScreen(double x, double y) => new(_offset.X + x * _scale, _offset.Y + y * _scale);
+
+    /// <summary>Exposes the surface to UI Automation (screen readers and UI tests); custom elements have no peer by default.</summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new SurfacePeer(this);
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
@@ -407,6 +411,13 @@ public sealed class AnnotationSurface : FrameworkElement
     }
 
     private void OnBoxListChanged(object? sender, NotifyCollectionChangedEventArgs e) => InvalidateVisual();
+
+    private sealed class SurfacePeer(AnnotationSurface owner) : FrameworkElementAutomationPeer(owner)
+    {
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Image;
+
+        protected override string GetClassNameCore() => nameof(AnnotationSurface);
+    }
 
     private static T Freeze<T>(T freezable) where T : Freezable
     {
