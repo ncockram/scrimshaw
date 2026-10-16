@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Scrimshaw.App.Tests/Scrimshaw.App.Tests.csproj" />
+    <Project Path="tests/Scrimshaw.App.UiTests/Scrimshaw.App.UiTests.csproj" />
     <Project Path="tests/Scrimshaw.Capture.Tests/Scrimshaw.Capture.Tests.csproj" />
     <Project Path="tests/Scrimshaw.Core.Tests/Scrimshaw.Core.Tests.csproj" />
     <Project Path="tests/Scrimshaw.TestSupport/Scrimshaw.TestSupport.csproj" />
