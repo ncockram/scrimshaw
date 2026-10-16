@@ -21,6 +21,38 @@ public interface IUiDispatcher
     void Post(Action action);
 }
 
+/// <summary>Makes thumbnails for the review strip off the UI thread.</summary>
+public interface IThumbnailService
+{
+    /// <returns>The thumbnail path, or null if the frame couldn't be read.</returns>
+    Task<string?> GetAsync(string framePath, string thumbsFolder, CancellationToken cancellationToken);
+}
+
+public sealed class ThumbnailService : IThumbnailService, IDisposable
+{
+    // One at a time: thumbnails are cheap, and this keeps decoding from competing with capture.
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
+    public async Task<string?> GetAsync(string framePath, string thumbsFolder, CancellationToken cancellationToken)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return Scrimshaw.Imaging.Thumbnails.GetOrCreate(framePath, thumbsFolder);
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public void Dispose() => _gate.Dispose();
+}
+
 /// <summary>Lists capture targets (wraps <see cref="CaptureTargets"/> so tests can supply their own).</summary>
 public interface ITargetProvider
 {

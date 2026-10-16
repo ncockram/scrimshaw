@@ -5,8 +5,17 @@ using Scrimshaw.Imaging;
 
 namespace Scrimshaw.App;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "Disposed in OnExit, the application's end of life.")]
 public partial class App : Application
 {
+    private readonly ThumbnailService _thumbnails = new();
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _thumbnails.Dispose();
+        base.OnExit(e);
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -17,7 +26,8 @@ public partial class App : Application
             new DialogService(() => window),
             new DispatcherUi(Dispatcher),
             new TargetProvider(),
-            new CaptureService(new WicImageCodec()));
+            new CaptureService(new WicImageCodec()),
+            _thumbnails);
         window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();

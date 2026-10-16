@@ -29,16 +29,18 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly IUiDispatcher _ui;
     private readonly ITargetProvider _targets;
     private readonly ICaptureService _capture;
+    private readonly IThumbnailService _thumbnails;
     private Workspace? _workspace;
     private CaptureSession? _session;
     private int _framesAtStart;
 
-    public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture)
+    public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture, IThumbnailService? thumbnails = null)
     {
         _dialogs = dialogs;
         _ui = ui;
         _targets = targets;
         _capture = capture;
+        _thumbnails = thumbnails ?? NoThumbnails.Instance;
         IntervalText = FormatInterval(1.0);
         ThresholdPercent = 3;
         JpegQuality = 90;
@@ -102,6 +104,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty]
     public partial string? StatusMessage { get; private set; }
+
+    /// <summary>The Review tab for the open workspace (Phase 3).</summary>
+    [ObservableProperty]
+    public partial ReviewViewModel? Review { get; private set; }
+
+    /// <summary>0 = Capture, 1 = Review.</summary>
+    [ObservableProperty]
+    public partial int SelectedTab { get; set; }
 
     public string ElapsedText => Stats.Elapsed.ToString(@"h\:mm\:ss", CultureInfo.CurrentCulture);
 
@@ -214,6 +224,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_session is { } s) await s.StopAsync();
+        Review?.Dispose();
+        Review = null;
         if (_workspace is not null) SaveSettingsQuietly();
         _workspace?.Dispose();
     }
@@ -248,9 +260,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private void SwitchTo(Workspace ws)
     {
         if (_workspace is not null) SaveSettingsQuietly();
+        Review?.Dispose();
         _workspace?.Dispose();
         _workspace = ws;
         WorkspacePath = ws.Root;
+        Review = new ReviewViewModel(ws, _thumbnails, _ui);
+        Review.Message += (_, message) => StatusMessage = message;
         WorkspaceSettings s = ws.Settings;
         IntervalText = FormatInterval(s.IntervalSeconds);
         ThresholdPercent = s.Detection.AreaThreshold * 100;
@@ -327,7 +342,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 CaptureStopReason.TargetLost => string.Create(CultureInfo.CurrentCulture,
                     $"The capture target went away (window closed or monitor disconnected). Capture stopped; {added} new frames kept."),
                 CaptureStopReason.Error => $"Capture stopped because frames couldn't be saved: {session.Error?.Message}",
-                _ => string.Create(CultureInfo.CurrentCulture, $"Capture stopped. {added} new frames saved."),
+                _ => string.Create(CultureInfo.CurrentCulture, $"Capture stopped. {added} new frames saved. Open the Review tab to box the music."),
             };
             _session = null;
             IsCapturing = false;
@@ -335,4 +350,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     }
 
     private static string FormatInterval(double seconds) => seconds.ToString("0.###", CultureInfo.CurrentCulture);
+}
+
+/// <summary>Used when no thumbnail service is supplied (tests): the strip shows no pictures.</summary>
+internal sealed class NoThumbnails : IThumbnailService
+{
+    public static readonly NoThumbnails Instance = new();
+
+    public Task<string?> GetAsync(string framePath, string thumbsFolder, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
 }
