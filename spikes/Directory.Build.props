@@ -1,0 +1,8 @@
+<Project>
+  <!-- Spikes are throwaway experiments: inherit repo settings but don't fail on analyzer warnings. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-minimum</AnalysisLevel>
+  </PropertyGroup>
+</Project>

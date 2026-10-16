@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+*.user
+*.suo
+.vs/
+.vscode/*
+!.vscode/extensions.json
+TestResults/
+*.trx
+coverage*/
+
+# Large sample recordings (keep labels/manifests, not frames)
+samples/**/*.png
+samples/**/*.jpg
+!samples/fixtures/**
+
+# Scratch output from spikes and harness runs
+spikes/**/out/
+*.tmp
