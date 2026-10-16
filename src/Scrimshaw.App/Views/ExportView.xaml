@@ -86,7 +86,7 @@
                         <Button Content="Open PDF" Margin="16,0,0,0" Command="{Binding OpenPdfCommand}" AutomationProperties.AutomationId="OpenPdf" />
                         <Button Content="Open folder" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" AutomationProperties.AutomationId="OpenFolder" />
                     </StackPanel>
-                    <ProgressBar Height="6" Margin="0,8,0,0" Maximum="100" Value="{Binding ProgressPercent}"
+                    <ProgressBar Height="6" Margin="0,8,0,0" Maximum="100" Value="{Binding ProgressPercent, Mode=OneWay}"
                                  Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}" />
                     <TextBlock Text="{Binding Result}" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="ExportResult"
                                Visibility="{Binding Result, Converter={StaticResource VisibleIfSet}}" />

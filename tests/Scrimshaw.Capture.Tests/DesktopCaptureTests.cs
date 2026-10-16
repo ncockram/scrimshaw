@@ -18,6 +18,7 @@ namespace Scrimshaw.Capture.Tests;
 /// after checking the machine is free (implementation plan §11). Recordings are kept under TestResults/desktop.
 /// </summary>
 [Trait("Category", "Desktop")]
+[Collection("Desktop")] // desktop tests run one at a time
 public sealed partial class DesktopCaptureTests
 {
     private const int PlayerWidth = 1280, PlayerHeight = 720;

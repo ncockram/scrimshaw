@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.4 (Phase 3 built; awaiting your checkpoint) |
+| Status | v1.5 (Phase 4 built; awaiting your checkpoint) |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 
@@ -306,7 +306,7 @@ Each phase lists what gets built, how I verify it, and when it's done.
 
 **Done when** the tests pass and the screenshots show the boxes in the right places at 100% and 125% DPI. **→ Checkpoint: you try the capture and annotation workflow yourself.**
 
-**Status: built and verified (2026-10-16); waiting for your checkpoint.**
+**Status: complete (2026-10-16); checkpoint passed.**
 - **Core:** `BoxGeometry` and `AnnotationEditor`, with one undo history whose entries record their frame, so undo jumps back to it. This covers the per-frame undo in the requirements, and "apply to following" undoes in one step.
 - **App:** Capture and Review tabs; thumbnail strip; `AnnotationSurface` (draw, move/resize handles, zoom, pan, fit); box list and labels; shortcuts; background thumbnails.
 - **Tests:** 137 headless (geometry, editor, review view-model including a dispatcher that queues like WPF's).
@@ -323,6 +323,24 @@ Each phase lists what gets built, how I verify it, and when it's done.
 - I view the exported PDFs page by page.
 
 **Done when** a full TestPlayer session goes all the way to a correct PDF. **→ Checkpoint: you review a PDF made from a real video, and ideally print one page.**
+
+**Status: built and verified (2026-10-16); waiting for your checkpoint.**
+- **Built:**
+  - `Scrimshaw.Export` (`PdfExporter`, caption font resolver); the Export PDF tab (options, live summary and page preview, export with progress and cancel, open PDF/folder); Harness `export`
+  - 13 golden export tests (PdfPig: pages, order, positions to 0.1 pt, crop pixels, bookmarks and their targets, captions, JPEG passthrough, cancel, nothing-to-export) plus 6 view-model tests; 157 headless tests in total
+- **Performance (NFR-4):** 500 crops from 50 real 1080p frames export in 6.7 s (39 pages, 4.1 MB).
+- **Desktop:** end-to-end TestPlayer → capture → boxes → PDF passes (7 crops, one per captured state); the Export tab UI test passes; the review UI tests still pass.
+- **Visual review:** V1 and V2 exports rendered and checked. The V2 export reads as a printed score (four systems per page at the same staff size).
+
+### Phase 4 findings
+
+| # | Finding | Action |
+|---|---|---|
+| F26 | PDFsharp's built-in Windows font lookup doesn't find Segoe UI. | `CaptionFontResolver` loads Segoe UI (falling back to Arial) from the Fonts folder |
+| F27 | **Source-generated JSON sets missing `init`-only properties to null or 0.** A pre-Phase-2 workspace would have opened with interval 0, null export options and FR-D8 off. | Optional properties use `set`. A compatibility test reads a minimal old settings file. Manifest reading is case-insensitive. |
+| F28 | **The app crashed on opening the Export tab:** a `ProgressBar.Value` binding is two-way by default and the property is read-only. Only the UI test caught it. | Binding made one-way; the other XAML bindings checked |
+| F29 | xunit runs test classes in parallel, so two UI tests drove two app windows at once and the screenshots caught the wrong one. | UI tests run in a single collection, and desktop capture tests in a "Desktop" collection |
+| F30 | A build-order-only reference from the UI tests to the app made MSBuild compile the app's XAML twice in parallel (`*.g.cs` not found). | Reference removed (the solution builds the app) |
 
 ### Phase 5 — Hardening and packaging
 **Build**

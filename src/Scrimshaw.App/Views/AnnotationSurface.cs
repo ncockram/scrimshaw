@@ -202,6 +202,7 @@ public sealed class AnnotationSurface : FrameworkElement
             else
             {
                 _drag = Drag.Draw;
+                image = ClampToImage(image); // a drag may start in the margin around the frame
                 _dragNowImage = image;
             }
             _dragStartImage = image;
