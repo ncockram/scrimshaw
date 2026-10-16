@@ -79,6 +79,42 @@ public sealed partial class DesktopCaptureTests
         Assert.True(stats.MeanDriftMs < 50, summary); // FR-C4: ±10% of 500 ms
     }
 
+    /// <summary>Phase 4 end to end: TestPlayer → capture → a box on every frame → PDF with one crop per page.</summary>
+    [Fact]
+    public async Task Capture_box_and_export_end_to_end()
+    {
+        string runDir = RunDirectory("end-to-end");
+        string title = "Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8];
+        using Process player = StartPlayer(title, Path.Combine(runDir, "player-log.json"), null, "mixed", pages: 6, hold: 2.5, turn: 0.6);
+        WindowTarget target = await FindWindowAsync(title);
+
+        using Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace"), new WorkspaceSettings { IntervalSeconds = 0.5 });
+        using (IFrameSource source = FrameSources.Create(target, includeCursor: false))
+        {
+            var session = new CaptureSession(ws, source, _codec);
+            session.Start();
+            await player.WaitForExitAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(90), TestContext.Current.CancellationToken);
+            await session.StopAsync();
+        }
+        RunLog log = JsonSerializer.Deserialize<RunLog>(await File.ReadAllTextAsync(Path.Combine(runDir, "player-log.json"), TestContext.Current.CancellationToken), Json)!;
+        Assert.Equal(log.States.Count, ws.Manifest.Current.Frames.Count);
+
+        // Box the music area of the first frame, label it, and apply it to the rest (as a user would).
+        var editor = new Core.Annotation.AnnotationEditor(ws.Manifest);
+        editor.AddBox(1, new Core.Annotation.PixelRect(40, 30, PlayerWidth - 80, PlayerHeight - 90));
+        editor.SetLabel(1, "b1", "Start");
+        editor.ApplyToFollowing(1);
+
+        Export.ExportResult result = Export.PdfExporter.Export(ws, new Core.Export.ExportOptions(), Path.Combine(runDir, "score.pdf"), cancellationToken: TestContext.Current.CancellationToken);
+
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(result.Path);
+        var images = pdf.GetPages().SelectMany(p => p.GetImages()).ToList();
+        Assert.Equal(log.States.Count, images.Count);
+        Assert.All(images, i => Assert.Equal((PlayerWidth - 80, PlayerHeight - 90), (i.WidthInSamples, i.HeightInSamples)));
+        Assert.Equal(1, result.Bookmarks);
+        TestContext.Current.TestOutputHelper?.WriteLine($"{result.Crops} crops on {result.Pages} pages -> {result.Path}");
+    }
+
     [Fact]
     public async Task Cursor_is_left_out_unless_asked_for()
     {

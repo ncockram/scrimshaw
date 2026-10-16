@@ -192,3 +192,89 @@ public sealed class ReviewUiTests : IDisposable
         return dir?.FullName ?? throw new InvalidOperationException("repo root not found");
     }
 }
+
+/// <summary>The Export tab in the real app (Phase 4). Desktop only, like <see cref="ReviewUiTests"/>.</summary>
+[Trait("Category", "Desktop")]
+public sealed class ExportUiTests : IDisposable
+{
+    private readonly UIA3Automation _automation = new();
+    private Application? _app;
+
+    public void Dispose()
+    {
+        if (_app is { HasExited: false }) _app.Kill();
+        _app?.Dispose();
+        _automation.Dispose();
+    }
+
+    [Fact]
+    public void Preview_and_export_from_the_export_tab()
+    {
+        string root = RepoRoot();
+        string runDir = Path.Combine(root, "TestResults", "ui", "export-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
+        string samples = Path.Combine(root, "samples", "real", "v2");
+        if (!File.Exists(Path.Combine(samples, "frame_00007.png"))) Assert.Skip("samples/real/v2 frames aren't present on this machine.");
+
+        // Nine one-system pages of V2, each boxed around its band of music.
+        int[] pages = [7, 16, 27, 38, 48, 59, 68, 81, 95];
+        var codec = new WicImageCodec();
+        using (Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace")))
+        {
+            foreach (int n in pages)
+            {
+                int seq = ws.Manifest.ReserveSequence();
+                string source = Path.Combine(samples, string.Create(CultureInfo.InvariantCulture, $"frame_{n:D5}.png"));
+                var record = new FrameRecord
+                {
+                    Seq = seq, File = ws.RelativeFramePath(seq), CapturedAt = DateTimeOffset.Now, Width = 1920, Height = 1080,
+                    DHash = DHash.ToHex(DHash.Compute(GrayGrid.FromImage(codec.Decode(source)))),
+                    Boxes = [new BoxRecord { Id = "b1", Order = 0, X = 0, Y = 300, W = 1920, H = 480, Label = seq == 1 ? "Yesterday" : null }],
+                };
+                File.Copy(source, ws.FullPath(record));
+                ws.Manifest.AddFrame(record);
+            }
+        }
+
+        string exe = Path.Combine(root, "src", "Scrimshaw.App", "bin", "Debug", "net10.0-windows10.0.26100.0", "Scrimshaw.exe");
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        psi.ArgumentList.Add(Path.Combine(runDir, "workspace"));
+        _app = Application.Launch(psi);
+        Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(15))!;
+        window.SetForeground();
+
+        Find(window, "TabExport").AsTabItem().Select();
+        Wait.UntilInputIsProcessed();
+        Thread.Sleep(800);
+        Assert.Contains("9 crops from 9 frames", Find(window, "ExportSummary").Name, StringComparison.Ordinal);
+        Capture.Element(window).ToFile(Path.Combine(runDir, "export-tab.png"));
+
+        Find(window, "ExportPdf").AsButton().Invoke();
+        string result = "";
+        for (int i = 0; i < 100 && !result.StartsWith("Saved", StringComparison.Ordinal); i++)
+        {
+            Thread.Sleep(100);
+            result = Find(window, "ExportResult").Name;
+        }
+        Assert.StartsWith("Saved", result, StringComparison.Ordinal);
+        Assert.Single(Directory.GetFiles(Path.Combine(runDir, "workspace", "exports"), "*.pdf"));
+        Capture.Element(window).ToFile(Path.Combine(runDir, "export-done.png"));
+        window.Close();
+    }
+
+    private static AutomationElement Find(AutomationElement root, string automationId)
+    {
+        for (int i = 0; i < 50; i++)
+        {
+            if (root.FindFirstDescendant(cf => cf.ByAutomationId(automationId)) is { } found) return found;
+            Thread.Sleep(100);
+        }
+        throw new InvalidOperationException($"'{automationId}' not found");
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Scrimshaw.slnx"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("repo root not found");
+    }
+}

@@ -12,6 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <ProjectReference Include="..\..\src\Scrimshaw.Capture\Scrimshaw.Capture.csproj" />
+    <ProjectReference Include="..\..\src\Scrimshaw.Export\Scrimshaw.Export.csproj" />
+    <PackageReference Include="PdfPig" />
     <ProjectReference Include="..\Scrimshaw.TestSupport\Scrimshaw.TestSupport.csproj" />
   </ItemGroup>
 </Project>
