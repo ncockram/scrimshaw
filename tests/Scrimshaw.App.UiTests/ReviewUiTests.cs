@@ -137,8 +137,7 @@ public sealed class ReviewUiTests : IDisposable
 
     private Window Launch(string workspace)
     {
-        string exe = Path.Combine(RepoRoot(), "src", "Scrimshaw.App", "bin", "Debug", "net10.0-windows10.0.26100.0", "Scrimshaw.exe");
-        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        var psi = new ProcessStartInfo(AppExe.Path) { UseShellExecute = false };
         psi.ArgumentList.Add(workspace);
         _app = Application.Launch(psi);
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(15)) ?? throw new TimeoutException("main window didn't appear");
@@ -235,8 +234,7 @@ public sealed class ExportUiTests : IDisposable
             }
         }
 
-        string exe = Path.Combine(root, "src", "Scrimshaw.App", "bin", "Debug", "net10.0-windows10.0.26100.0", "Scrimshaw.exe");
-        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        var psi = new ProcessStartInfo(AppExe.Path) { UseShellExecute = false };
         psi.ArgumentList.Add(Path.Combine(runDir, "workspace"));
         _app = Application.Launch(psi);
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(15))!;
@@ -275,6 +273,24 @@ public sealed class ExportUiTests : IDisposable
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Scrimshaw.slnx"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("repo root not found");
+    }
+}
+
+/// <summary>
+/// The app under test: the Debug build by default, or any exe named in <c>SCRIMSHAW_EXE</c> (for example the
+/// published single-file build, copied to a clean folder).
+/// </summary>
+internal static class AppExe
+{
+    public static string Path => Environment.GetEnvironmentVariable("SCRIMSHAW_EXE") is { Length: > 0 } exe
+        ? exe
+        : System.IO.Path.Combine(RepoRoot(), "src", "Scrimshaw.App", "bin", "Debug", "net10.0-windows10.0.26100.0", "Scrimshaw.exe");
+
+    public static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir.FullName, "Scrimshaw.slnx"))) dir = dir.Parent;
         return dir?.FullName ?? throw new InvalidOperationException("repo root not found");
     }
 }
