@@ -17,7 +17,7 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
-        FitToWorkArea();
+        if (!RestorePlacement(viewModel.AppSettings.Load().Window)) FitToWorkArea();
         SourceInitialized += (_, _) =>
         {
             _hotkey = new GlobalHotkey(this, 'S', viewModel.ToggleCapture);
@@ -41,6 +41,39 @@ public partial class MainWindow : Window
         Top = area.Top + (area.Height - Height) / 2;
     }
 
+    /// <summary>Puts the window back where it was last time, if that's still mostly on a connected screen.</summary>
+    private bool RestorePlacement(WindowPlacement? p)
+    {
+        if (p is null || p.Width < 300 || p.Height < 200) return false;
+        var saved = new Rect(p.Left, p.Top, p.Width, p.Height);
+        var desktop = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+        Rect visible = Rect.Intersect(saved, desktop);
+        if (visible.IsEmpty || visible.Width * visible.Height < saved.Width * saved.Height * 0.5) return false;
+
+        Left = p.Left;
+        Top = p.Top;
+        Width = p.Width;
+        Height = p.Height;
+        MinWidth = Math.Min(MinWidth, Width);
+        MinHeight = Math.Min(MinHeight, Height);
+        if (p.Maximized) WindowState = WindowState.Maximized;
+        return true;
+    }
+
+    private void SavePlacement()
+    {
+        Rect r = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+        if (r.IsEmpty) return;
+        AppSettings settings = _viewModel.AppSettings.Load();
+        _viewModel.AppSettings.Save(settings with
+        {
+            Window = new WindowPlacement(r.Left, r.Top, r.Width, r.Height, WindowState == WindowState.Maximized),
+        });
+    }
+
+    private void OnAbout(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -49,6 +82,7 @@ public partial class MainWindow : Window
 
         // Stop capture and finish writing before the window goes (FR-C3).
         e.Cancel = true;
+        SavePlacement();
         IsEnabled = false;
         await _viewModel.DisposeAsync();
         _hotkey?.Dispose();

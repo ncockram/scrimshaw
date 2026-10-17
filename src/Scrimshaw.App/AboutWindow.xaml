@@ -1,0 +1,46 @@
+<Window x:Class="Scrimshaw.App.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About Scrimshaw" Width="520" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Icon="/Assets/scrimshaw.ico" AutomationProperties.AutomationId="AboutWindow">
+    <StackPanel Margin="20">
+        <DockPanel>
+            <Image DockPanel.Dock="Left" Source="/Assets/scrimshaw.ico" Width="64" Height="64" Margin="0,0,16,0" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Scrimshaw" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock x:Name="VersionText" Foreground="{x:Static SystemColors.GrayTextBrush}" />
+            </StackPanel>
+        </DockPanel>
+
+        <TextBlock TextWrapping="Wrap" Margin="0,16,0,0">
+            Turns sheet-music videos into printable PDF scores: it captures each page as the video plays,
+            lets you box the music, and stacks the boxes into a PDF.
+        </TextBlock>
+
+        <TextBlock Text="How to use it" FontWeight="SemiBold" Margin="0,16,0,4" />
+        <TextBlock TextWrapping="Wrap" LineHeight="20">
+            1. New workspace… — one empty folder per video.<LineBreak />
+            2. Capture — pick the browser window, start (Ctrl+Alt+S), play the video full screen, stop at the end.<LineBreak />
+            3. Review and box — draw a box on the first page, apply it to the following pages, adjust any that differ.<LineBreak />
+            4. Export PDF — check the preview, then export.
+        </TextBlock>
+
+        <TextBlock Text="Open-source components" FontWeight="SemiBold" Margin="0,16,0,4" />
+        <TextBlock TextWrapping="Wrap" LineHeight="20" Foreground="{x:Static SystemColors.GrayTextBrush}">
+            .NET, WPF and Microsoft.Extensions — MIT License, © .NET Foundation and Contributors<LineBreak />
+            C#/WinRT — MIT License, © Microsoft Corporation<LineBreak />
+            PDFsharp 6.2.4 — MIT License, © empira Software GmbH<LineBreak />
+            Vortice.Windows 3.8.3 — MIT License, © Amer Koleci and Contributors<LineBreak />
+            SharpGen.Runtime — MIT License, © Alexandre Mutel, Jeremy Koritzinsky, Amer Koleci<LineBreak />
+            CommunityToolkit.Mvvm 8.4.2 — MIT License, © .NET Foundation and Contributors<LineBreak />
+            Full texts are in THIRD-PARTY-NOTICES.txt next to Scrimshaw.exe.
+        </TextBlock>
+
+        <DockPanel Margin="0,20,0,0" LastChildFill="False">
+            <Button DockPanel.Dock="Left" Content="Open error logs folder" Click="OnOpenLogs" Padding="10,4" />
+            <Button DockPanel.Dock="Right" Content="Close" IsDefault="True" IsCancel="True" Padding="16,4"
+                    AutomationProperties.AutomationId="AboutClose" />
+        </DockPanel>
+    </StackPanel>
+</Window>

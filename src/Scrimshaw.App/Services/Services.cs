@@ -13,6 +13,9 @@ public interface IDialogService
     string? PickFolder(string title);
 
     void ShowError(string title, string message);
+
+    /// <returns>True if the user chose Yes.</returns>
+    bool Confirm(string title, string message);
 }
 
 /// <summary>Opens files and folders with Windows (so tests can check what would be opened).</summary>

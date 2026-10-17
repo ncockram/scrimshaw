@@ -7,7 +7,7 @@
         xmlns:views="clr-namespace:Scrimshaw.App.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="Scrimshaw" Width="1100" Height="740" MinWidth="900" MinHeight="600"
+        Title="Scrimshaw" Icon="/Assets/scrimshaw.ico" Width="1100" Height="740" MinWidth="900" MinHeight="600"
         AutomationProperties.AutomationId="MainWindow">
     <DockPanel>
         <!-- Workspace bar -->
@@ -18,6 +18,20 @@
                         AutomationProperties.AutomationId="NewWorkspace" />
                 <Button DockPanel.Dock="Left" Content="Open workspace…" Margin="8,0,0,0" Command="{Binding OpenWorkspaceCommand}"
                         AutomationProperties.AutomationId="OpenWorkspace" />
+                <Menu DockPanel.Dock="Left" Margin="8,0,0,0" VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem Header="Recent ▾" ItemsSource="{Binding RecentWorkspaces}" Padding="8,4"
+                              IsEnabled="{Binding HasRecent}"
+                              AutomationProperties.AutomationId="Recent">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding}" />
+                                <Setter Property="Command" Value="{Binding DataContext.OpenRecentCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
+                <Button DockPanel.Dock="Right" Content="About" Margin="8,0,0,0" Click="OnAbout" AutomationProperties.AutomationId="About" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            Text="{Binding WorkspacePath, TargetNullValue='No workspace open. Create a new one for each video.'}"
                            ToolTip="{Binding WorkspacePath}" AutomationProperties.AutomationId="WorkspacePath" />

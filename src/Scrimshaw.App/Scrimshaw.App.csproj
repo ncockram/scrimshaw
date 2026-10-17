@@ -7,6 +7,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Scrimshaw</AssemblyName>
     <RootNamespace>Scrimshaw.App</RootNamespace>
+    <ApplicationIcon>Assets\scrimshaw.ico</ApplicationIcon>
+    <Product>Scrimshaw</Product>
+    <Description>Turns sheet-music videos into printable PDF scores.</Description>
     <!-- LibraryImport (global hotkey) generates unsafe marshalling code -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -14,6 +17,10 @@
     <!-- UseWPF drops System.IO from implicit usings -->
     <Using Include="System.IO" />
     <InternalsVisibleTo Include="Scrimshaw.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\scrimshaw.ico" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />

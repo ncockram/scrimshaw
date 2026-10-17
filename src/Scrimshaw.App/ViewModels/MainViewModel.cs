@@ -25,18 +25,25 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     public const double MinThresholdPercent = 1, MaxThresholdPercent = 30;
 
+    /// <summary>Below this much free space capture won't start (about 100 4K PNG frames).</summary>
+    public const long MinFreeBytes = 200L * 1024 * 1024;
+
+    /// <summary>Below this much free space capture starts with a warning.</summary>
+    public const long LowFreeBytes = 1024L * 1024 * 1024;
+
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
     private readonly ITargetProvider _targets;
     private readonly ICaptureService _capture;
     private readonly IThumbnailService _thumbnails;
     private readonly IShellService _shell;
+    private readonly IAppSettingsStore _appSettings;
     private Workspace? _workspace;
     private CaptureSession? _session;
     private int _framesAtStart;
 
     public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture,
-        IThumbnailService? thumbnails = null, IShellService? shell = null)
+        IThumbnailService? thumbnails = null, IShellService? shell = null, IAppSettingsStore? appSettings = null)
     {
         _dialogs = dialogs;
         _ui = ui;
@@ -44,6 +51,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         _capture = capture;
         _thumbnails = thumbnails ?? NoThumbnails.Instance;
         _shell = shell ?? new ShellService();
+        _appSettings = appSettings ?? new InMemoryAppSettingsStore();
+        foreach (string folder in _appSettings.Load().Recent.Where(Directory.Exists)) RecentWorkspaces.Add(folder);
         IntervalText = FormatInterval(1.0);
         ThresholdPercent = 3;
         JpegQuality = 90;
@@ -51,6 +60,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     }
 
     public ObservableCollection<TargetOption> Targets { get; } = [];
+
+    /// <summary>Recently opened workspaces, newest first (FR-W4).</summary>
+    public ObservableCollection<string> RecentWorkspaces { get; } = [];
+
+    public bool HasRecent => RecentWorkspaces.Count > 0;
+
+    /// <summary>The app-wide settings store, for the window to save and restore its position.</summary>
+    public IAppSettingsStore AppSettings => _appSettings;
 
     public Workspace? Workspace => _workspace;
 
@@ -89,7 +106,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat))]
-    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand))]
     public partial bool IsCapturing { get; private set; }
 
     [ObservableProperty]
@@ -141,6 +158,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         try
         {
             SwitchTo(Workspace.Create(folder));
+            Remember(folder);
             StatusMessage = "New workspace created. Choose what to capture, then start.";
         }
         catch (Exception ex) when (ex is WorkspaceException or IOException or UnauthorizedAccessException or ArgumentException)
@@ -157,23 +175,98 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Open(folder);
     }
 
+    [RelayCommand(CanExecute = nameof(CanSwitchWorkspace))]
+    private void OpenRecent(string? folder)
+    {
+        if (folder is null) return;
+        if (!Directory.Exists(folder))
+        {
+            Forget(folder);
+            _dialogs.ShowError("Can't open workspace", $"{folder} no longer exists, so it has been removed from the recent list.");
+            return;
+        }
+        Open(folder);
+    }
+
     /// <summary>Opens a workspace by path (also used for recent workspaces and tests).</summary>
     public void Open(string folder)
     {
+        if (_workspace is not null && string.Equals(Path.GetFullPath(folder), _workspace.Root, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusMessage = "That workspace is already open.";
+            return;
+        }
         try
         {
-            Workspace ws = Workspace.Open(folder, _capture.Codec);
-            SwitchTo(ws);
-            RecoveryReport r = ws.Recovery;
-            StatusMessage = r.IsClean
-                ? string.Create(CultureInfo.CurrentCulture, $"Opened workspace with {FrameCount} frames.")
-                : string.Create(CultureInfo.CurrentCulture,
-                    $"Opened workspace. Repaired after an interruption: {r.RecoveredFrames.Count} frames recovered, {r.MissingFiles.Count} image files missing, {r.UnreadableFiles.Count} unreadable.");
+            Opened(Workspace.Open(folder, _capture.Codec));
+        }
+        catch (WorkspaceException ex) when (ex.Problem == WorkspaceProblem.Damaged)
+        {
+            bool manifest = string.Equals(Path.GetFileName(ex.DamagedFile), Workspace.ManifestFileName, StringComparison.OrdinalIgnoreCase);
+            string consequence = manifest
+                ? "Your captured frames are kept, but the boxes and labels stored in the damaged file can't be recovered."
+                : "The workspace's settings go back to their defaults; frames, boxes and labels are kept.";
+            if (!_dialogs.Confirm("Repair workspace?",
+                    $"{ex.Message}\n\nScrimshaw can rebuild it. {consequence} The damaged file is kept next to it as a backup.\n\nRepair now?"))
+                return;
+            try
+            {
+                Opened(Workspace.OpenWithRepair(folder, _capture.Codec));
+            }
+            catch (Exception repairError) when (repairError is WorkspaceException or IOException or UnauthorizedAccessException)
+            {
+                _dialogs.ShowError("Can't repair workspace", repairError.Message);
+            }
+        }
+        catch (WorkspaceException ex) when (ex.Problem == WorkspaceProblem.InUse)
+        {
+            _dialogs.ShowError("Workspace already open", $"{ex.Message} Close it there first, or switch to that window.");
+        }
+        catch (WorkspaceException ex) when (ex.Problem == WorkspaceProblem.NotAWorkspace)
+        {
+            _dialogs.ShowError("Can't open workspace", $"{ex.Message} To start a new one there, use New workspace… with an empty folder.");
         }
         catch (Exception ex) when (ex is WorkspaceException or IOException or UnauthorizedAccessException)
         {
             _dialogs.ShowError("Can't open workspace", ex.Message);
         }
+    }
+
+    private void Opened(Workspace ws)
+    {
+        SwitchTo(ws);
+        Remember(ws.Root);
+        RecoveryReport r = ws.Recovery;
+        if (r.SetAsideFiles.Count > 0)
+            StatusMessage = string.Create(CultureInfo.CurrentCulture,
+                $"Workspace repaired: {FrameCount} frames available. Damaged files kept as {string.Join(", ", r.SetAsideFiles.Select(Path.GetFileName))}.");
+        else if (r.IsClean)
+            StatusMessage = string.Create(CultureInfo.CurrentCulture, $"Opened workspace with {FrameCount} frames.");
+        else
+            StatusMessage = string.Create(CultureInfo.CurrentCulture,
+                $"Opened workspace. Repaired after an interruption: {r.RecoveredFrames.Count} frames recovered, {r.MissingFiles.Count} image files missing, {r.UnreadableFiles.Count} unreadable.");
+    }
+
+    private void Remember(string folder)
+    {
+        string full = Path.GetFullPath(folder);
+        AppSettings settings = _appSettings.Load().WithRecent(full);
+        _appSettings.Save(settings);
+        SyncRecent(settings);
+    }
+
+    private void Forget(string folder)
+    {
+        AppSettings settings = _appSettings.Load().WithoutRecent(folder);
+        _appSettings.Save(settings);
+        SyncRecent(settings);
+    }
+
+    private void SyncRecent(AppSettings settings)
+    {
+        RecentWorkspaces.Clear();
+        foreach (string f in settings.Recent) RecentWorkspaces.Add(f);
+        OnPropertyChanged(nameof(HasRecent));
     }
 
     [RelayCommand]
@@ -191,6 +284,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private void StartCapture()
     {
         if (_workspace is null || SelectedTarget is null || !TryParseInterval(IntervalText, out double interval)) return;
+        long? free = _workspace.FreeBytes;
+        if (free < MinFreeBytes)
+        {
+            _dialogs.ShowError("Not enough disk space", string.Create(CultureInfo.CurrentCulture,
+                $"Only {free / (1024.0 * 1024):0} MB is free on the workspace's drive. Free up some space, or use a workspace on another drive."));
+            return;
+        }
         try
         {
             SaveSettings(interval);
@@ -207,7 +307,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         _session.FrameSaved += OnFrameSaved;
         Stats = CaptureStats.Empty;
         IsCapturing = true;
-        StatusMessage = "Capturing… play the video now. Stop when it ends.";
+        StatusMessage = free < LowFreeBytes
+            ? string.Create(CultureInfo.CurrentCulture, $"Capturing… note: only {free / (1024.0 * 1024 * 1024):0.0} GB free on this drive. Play the video now.")
+            : "Capturing… play the video now. Stop when it ends.";
         _ = WatchAsync(_session);
     }
 

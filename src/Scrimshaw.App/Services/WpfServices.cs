@@ -20,6 +20,15 @@ public sealed class DialogService(Func<Window?> owner) : IDialogService
         if (w is null) MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
         else MessageBox.Show(w, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
+
+    public bool Confirm(string title, string message)
+    {
+        Window? w = owner();
+        MessageBoxResult result = w is null
+            ? MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question)
+            : MessageBox.Show(w, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+        return result == MessageBoxResult.Yes;
+    }
 }
 
 public sealed class DispatcherUi(Dispatcher dispatcher) : IUiDispatcher

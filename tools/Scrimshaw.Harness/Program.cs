@@ -6,12 +6,13 @@
 //   scrimshaw-harness record <outDir> --window "title text" [--interval 1] [--max 900]
 //   scrimshaw-harness contact <framesDir> <out.png> [--from 1] [--to 9999] [--step 1] [--cols 8] [--width 240]
 //   scrimshaw-harness export <workspace> [--out file.pdf] [--captions] [--one-per-page] [--fit-width] [--a4] [--landscape]
+//   scrimshaw-harness icon <out.ico>
 //   scrimshaw-harness render-pdf <file.pdf> [outDir] [dpi]
 using Scrimshaw.Harness;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("usage: scrimshaw-harness replay <framesDir> [options] | synth <outDir> [options] | bench [options] | record <outDir> --window <text> [options] | contact <framesDir> <out.png> [options] | export <workspace> [options] | render-pdf <file.pdf> [outDir] [dpi]");
+    Console.Error.WriteLine("usage: scrimshaw-harness replay <framesDir> [options] | synth <outDir> [options] | bench [options] | record <outDir> --window <text> [options] | contact <framesDir> <out.png> [options] | export <workspace> [options] | icon <out.ico> | render-pdf <file.pdf> [outDir] [dpi]");
     return 2;
 }
 
@@ -24,6 +25,7 @@ return args[0] switch
     "record" => await RecordCommand.RunAsync(options),
     "contact" => ContactCommand.Run(options),
     "export" => ExportCommand.Run(options),
+    "icon" => IconCommand.Run(options),
     "render-pdf" => await RenderPdfCommand.RunAsync(options),
     _ => Fail($"unknown command '{args[0]}'"),
 };

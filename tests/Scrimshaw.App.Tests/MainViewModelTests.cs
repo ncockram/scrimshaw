@@ -20,6 +20,15 @@ internal sealed class FakeDialogs : IDialogService
     public string? PickFolder(string title) => Folders.Count > 0 ? Folders.Dequeue() : null;
 
     public void ShowError(string title, string message) => Errors.Add(message);
+
+    public Queue<bool> Answers { get; } = new();
+    public List<string> Questions { get; } = [];
+
+    public bool Confirm(string title, string message)
+    {
+        Questions.Add(message);
+        return Answers.Count > 0 && Answers.Dequeue();
+    }
 }
 
 internal sealed class ImmediateUi : IUiDispatcher
