@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.6 (Phase 5 complete: v1.0 built) |
+| Status | **v1.0 delivered** (2026-10-17). All phases complete; every checkpoint passed. |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 
@@ -85,16 +85,20 @@ scrimshaw/
 │  └─ Scrimshaw.App/           # WPF shell, views, view-models
 ├─ tools/
 │  ├─ Scrimshaw.TestPlayer/    # Synthetic score player (ground truth for capture tests)
-│  └─ Scrimshaw.Harness/       # CLI: replay (score detection against labels), synth (labelled synthetic recordings), render-pdf
+│  └─ Scrimshaw.Harness/       # CLI: replay, synth, record, bench, contact, export, render-pdf, icon
 ├─ tests/
+│  ├─ Scrimshaw.TestSupport/   # Shared helpers: synthetic score frames, temp folders
 │  ├─ Scrimshaw.Core.Tests/
-│  ├─ Scrimshaw.Export.Tests/
-│  ├─ Scrimshaw.Capture.Tests/ # Interactive desktop: WGC against TestPlayer
-│  └─ Scrimshaw.App.UiTests/   # Interactive desktop: FlaUI end-to-end
+│  ├─ Scrimshaw.Capture.Tests/ # Headless capture-loop and stitching tests; desktop tests (WGC against TestPlayer)
+│  ├─ Scrimshaw.Export.Tests/  # Golden PDF tests (PdfPig)
+│  ├─ Scrimshaw.App.Tests/     # View-model tests, including 5,000-frame scale
+│  └─ Scrimshaw.App.UiTests/   # Desktop: FlaUI end-to-end, About, real-video acceptance; SCRIMSHAW_EXE selects the exe
 ├─ samples/                    # Recorded sequences (synthetic + real) with ground-truth labels; large files git-ignored
-├─ global.json
-├─ Directory.Build.props
-└─ Scrimshaw.sln
+├─ publish/                    # Release output (git-ignored): Scrimshaw.exe + THIRD-PARTY-NOTICES.txt
+├─ global.json                 # SDK 10.0.402; Microsoft.Testing.Platform test runner
+├─ Directory.Build.props       # Shared settings, version 1.0.0
+├─ Directory.Packages.props    # Central package versions (PDFsharp pinned to 6.2.4)
+└─ Scrimshaw.slnx
 ```
 
 Dependency direction: `App → Capture, Export → Imaging → Core`. Tools and tests may reference anything. Core uses no WPF or WinRT types. Pixel buffers cross project boundaries as `RawImage { int Width, Height, Stride; byte[] Bgra; }`.
@@ -356,7 +360,7 @@ Each phase lists what gets built, how I verify it, and when it's done.
 
 **Done when** v1.0 is built and the main scenario works on a real video. **→ Final checkpoint.**
 
-**Status: complete (2026-10-17); waiting for the final checkpoint.**
+**Status: complete (2026-10-17); final checkpoint passed.**
 - **Robustness:**
   - workspace lock (`scrimshaw.lock`, deleted on close; a stale lock after a crash is reused)
   - `Workspace.OpenWithRepair` for damaged settings or manifest files (damaged file kept; the manifest is rebuilt from the images)
@@ -397,23 +401,24 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
 | R1 | ~~Black frames from hardware-accelerated browser content (especially on hybrid GPUs)~~ **Retired: Phase 0 captured YouTube in Chrome cleanly on this hybrid GPU (F12).** | Main scenario broken | Phase 0 tests this on this exact machine. If it fails: force the browser onto one GPU in Windows graphics settings, or turn off browser hardware acceleration, and document the workaround. DXGI Desktop Duplication is a weaker fallback on hybrid GPUs. |
-| R2 | A page turn is missed (a partial turn below the threshold, or a page shown for less than the settle time) | Missing music in the PDF | Low default threshold, tuned against ground truth; live readout; settle count can be set to 0. |
-| R3 | YouTube's controls or the mouse cause extra frames | A few extra frames to delete | Low impact now that there are no moving elements. Leave the cursor out; follow A7. Deleting frames is quick (FR-A9). |
+| R2 | A page turn is missed (a partial turn below the threshold, or a page shown for less than the settle time) | Missing music in the PDF | **Mitigated:** 3% default, tuned against ground truth; every labelled recording passes; live readout; settle count can be set to 0. |
+| R3 | YouTube's controls or the mouse cause extra frames | A few extra frames to delete | **Mitigated:** cursor left out; FR-D8 keeps the clean version; end screens deleted with Ctrl+D (FR-A9). |
 | R4 | Mixed-DPI coordinates or crops come out wrong | Wrong PDF content | Pixel-space boxes; tested on this machine's 125% + 100% monitors. |
-| R5 | PDFsharp gaps on .NET 10 (outlines, images) | Export rework | Phase 0 spike; export kept behind `IPdfExporter`. |
-| R6 | Low-resolution source gives blurry prints | Poor output | A8; show the source resolution in the capture panel. |
+| R5 | PDFsharp gaps on .NET 10 (outlines, images) | Export rework | **Resolved:** Phase 0 spike and Phase 4 golden tests. All PDF code is in `Scrimshaw.Export`, so the library could be swapped there alone. |
+| R6 | Low-resolution source gives blurry prints | Poor output | A8; the capture panel shows the source resolution; the user guide recommends full screen at the highest quality. |
 | R7 | UI automation clashes with you using the PC at the same time | Flaky tests, or interrupting your work | Desktop tests are kept separate and only run when agreed (§11). Most logic is tested headlessly. |
-| R8 | Windows 10 compatibility can't be tested on this machine | A Windows 10 bug found late | Use only APIs available in build 19041; check the OS version at runtime before using Windows 11-only features (border control). |
+| R8 | Windows 10 compatibility can't be tested on this machine | A Windows 10 bug found late | **Accepted:** the platform analyser enforces build 19041 APIs (as a build error); the one Windows 11-only call is version-guarded. A real Windows 10 test remains open (§13). |
 
 ## 10. Decisions
 
 | Decision | Status |
 |---|---|
 | .NET 10 + WPF + WGC | Confirmed against this machine (§2) |
-| PDFsharp for PDF | Proposed; confirmed by the Phase 0 spike |
-| Changed-area measure + settle detection | Proposed; defaults set in Phase 2 |
+| PDFsharp 6.2.4 (MIT) for PDF; never 6.5+ (AGPL) | Confirmed (F2) |
+| Changed-area measure + settle detection + keep-longest version (FR-D8) | Confirmed; defaults 3% / tolerance 24 / settle 1 at tolerance 8 |
 | Shared-scale, left-aligned stacked layout | Confirmed (requirements v0.3) |
-| Headless-first testing with a synthetic score player and on-demand desktop tests | Proposed (§3) |
+| Headless-first testing with a synthetic score player and on-demand desktop tests | Confirmed; used through every phase |
+| One manifest per workspace, atomic writes, workspace lock | Confirmed |
 
 ## 11. Development agreements (answered 2026-10-16)
 
@@ -425,7 +430,11 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | 4 | Real videos | Open in your default browser (covered by the coordination rule in row 3). Links: **V1** https://www.youtube.com/watch?v=atYihjjTgAk · **V2** https://www.youtube.com/watch?v=LyZIyDVehzU · **V3** https://www.youtube.com/watch?v=Ay8Vauav4yA (animated / cross-fade page turns; the main test of settle detection). |
 | 5 | Windows 10 | No Windows 10 machine is available. Windows 10 support is checked only at the API level (R8). |
 
-## 12. Phase 0 findings
+## 12. Findings
+
+Numbered findings from Phases 0 and 2 are below. Phase 4 (F26–F30) and Phase 5 (F31–F34) findings sit with their phases in §7.
+
+### Phase 0 findings
 
 | # | Finding | Action |
 |---|---|---|
@@ -462,3 +471,39 @@ Each phase lists what gets built, how I verify it, and when it's done.
 | F23 | Resizing a window during capture works: frames switch to the new size cleanly. | Confirmed |
 | F24 | V2 shows one system per "page" on a band; each change measured 14–47%. V1 page turns measured 43–60%; full-screen V3, 19–44%. All are far above the 3% threshold. | 3% default kept |
 | F25 | After the video, YouTube's suggestion cards, "Up next" countdown and autoplay all count as changes. | Already covered by the hint (turn off autoplay) and deleting frames in review (FR-A9) |
+
+## 13. After v1.0
+
+v1.0 meets every Must and Should requirement (requirements §9). What follows is a menu, not a commitment; nothing here is scheduled until it goes through requirements §10.
+
+### Housekeeping (small, worth doing whenever)
+
+| Item | Why |
+|---|---|
+| Test on a real Windows 10 machine or VM (build 19041+) | Windows 10 support is only checked at the API level (R8) |
+| Create a remote repository and push to it | The project currently exists only on this machine |
+| Code-sign `Scrimshaw.exe` | Without a signature, Windows SmartScreen warns on first run on other PCs |
+| Watch for .NET 10 servicing updates; rebuild and republish | Security fixes for the bundled runtime |
+| Keep PDFsharp on 6.2.x (or move to another MIT library) | 6.5+ is AGPL (F2) |
+
+### Candidate features
+
+| Idea | Size | Notes |
+|---|---|---|
+| **FR-C12 Region of interest** (deferred Could) | Medium | Capture or compare only part of the window: handles videos with a moving element, a performer inset, or permanent player chrome |
+| **FR-P11 Print clean-up** (deferred Could) | Small | Grayscale and whiten off-white backgrounds; saves ink, sharper prints |
+| **FR-P12 Alignment** (deferred Could) | Small | Left, centre or right crops in the PDF |
+| Automatic music-area detection | Medium | Propose a box per page around the staves, for the user to accept or adjust |
+| Scrolling-score videos | Large | Stitch a continuously scrolling score into pages; different detection entirely |
+| Video-file input | Medium | Process a downloaded video file instead of the live screen: faster than real time, no screen time needed |
+| Combine workspaces | Small | One PDF from several videos (e.g. a suite's movements) |
+| Configurable hotkey | Small | For when Ctrl+Alt+S clashes with another app |
+| Installer or winget package; ARM64 build | Small–Medium | Easier installation and updates; NFR-1's Could |
+| Optical music recognition / MusicXML | Very large | Out of scope for v1 (requirements §2); a different kind of project |
+
+### When to bring in new requests
+
+- **Any time:** jot a request down in requirements §11. Recording costs nothing and doesn't commit to anything.
+- **Before building:** do one short refinement pass for each batch (requirements §10, steps 2–3), as happened after the brainstorm. Batching two or three related requests into one phase is cheaper than one at a time, because they share a design review, a desktop session and a checkpoint.
+- **Best moment:** after a few weeks of real use. Requests that come from scoring actual videos (missed pages, awkward boxing, print results) are better informed than ones imagined up front, and the real recordings can join `samples/` as regression tests.
+- **Bug fixes** don't need the full process: describe the problem (ideally with the workspace, or a log from `%LOCALAPPDATA%\Scrimshaw\logs`), and the fix gets a regression test.

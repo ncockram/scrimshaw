@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | v0.4 |
-| Date | 2026-10-16 (FR-D8 added after Phase 2 real-video tests) |
+| Status | **v1.0: delivered.** Every Must and Should requirement is built and verified (§9). |
+| Date | 2026-10-17 (v0.4 added FR-D8 after the Phase 2 real-video tests) |
 | Source | `brainstorm.md` (initial brainstorming conversation); review comments on v0.1 and v0.2 |
 
 ## 1. Purpose
@@ -173,4 +173,50 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 
 ## 8. Open questions
 
-None on the product requirements. Questions about the development process are in §9 of the implementation plan.
+None on the product requirements. The development process is described in §11 of the implementation plan.
+
+## 9. v1.0 delivery status
+
+Every **Must** and **Should** requirement is delivered. The **Could** items are deliberately deferred. "Verified" says how each was proven; the test suite has 180 headless tests plus desktop tests.
+
+| Requirement | Status | Verified by |
+|---|---|---|
+| FR-W1–W3, W5 | Done | Workspace and manifest unit tests; UI tests reopen workspaces |
+| FR-W4 Recent workspaces | Done (Should) | View-model tests; Recent ▾ menu |
+| FR-C1, C3–C6 | Done | Capture-session tests on a fake clock; desktop tests (±7 ms average drift) |
+| FR-C2 Targets | Done: (a) whole desktop, (b) monitor, (c) window, (d) webpage via the browser window | Stitching unit tests on this machine's 3-monitor layout; Phase 0 monitor and desktop capture; desktop window tests; real-video acceptance |
+| FR-C7 Cursor left out | Done (Should) | Desktop test (0.00% change excluded, visible when included) |
+| FR-C8 Covered window | Done (Should) | Phase 0 (F13) |
+| FR-C9 Global hotkey | Done (Should) | Real-video acceptance stops with Ctrl+Alt+S |
+| FR-C10 Target lost | Done | Unit and desktop tests |
+| FR-C11 Resume | Done (Should) | Capture-session test |
+| FR-C12 Region of interest | **Deferred (Could)** | — |
+| FR-D1–D8 | Done | Unit tests; replay of 5 synthetic and 4 real labelled recordings, all passing; desktop tests per turn style |
+| FR-A1–A4, A6, A10 | Done | Editor and view-model tests; UI tests with the real mouse |
+| FR-A5, A7, A8, A9, A11 | Done (Should) | Same; undo goes beyond "within a frame" (one history, and "apply to following" undoes in one step) |
+| FR-P1–P3, P7–P10 | Done | 13 golden PDF tests (PdfPig); visual review of real exports |
+| FR-P4–P6 | Done (stacked and one per page; Letter/A4; portrait/landscape; margins and gap) | Golden tests; Export tab UI test |
+| FR-P5 Captions | Done (Should) | Golden test |
+| FR-P11 Print clean-up, FR-P12 Alignment | **Deferred (Could)** | — |
+| NFR-1 Platform | Done for Windows 11 x64. Windows 10 2004+ checked at the API level only (no Windows 10 machine available). ARM64 (Could) not built. | Platform analyser as a build error; guarded Windows 11-only call |
+| NFR-2 DPI | Done | 125% + 100% monitors; native-resolution captures; UI screenshots at both |
+| NFR-3 Performance | Done | 4K benchmark (detection 21.5 ms, PNG 113 ms); about 1% CPU at 1080p |
+| NFR-4 Responsiveness | Done | 500 crops exported in 6.7 s; capture and export off the UI thread |
+| NFR-5 Durability | Done | Atomic writes; crash-recovery tests; kill-after-edit UI test; repair of damaged files |
+| NFR-6 Scale | Done | 5,000-frame test (open, review, edit, apply to all, undo, save, export layout) runs in under 3 s in total |
+| NFR-7 Distribution | Done | Single self-contained `Scrimshaw.exe`; UI tests run against it from a clean folder |
+| NFR-8 Privacy | Done | No network code (checked) |
+| NFR-9 Licensing | Done | All shipped components MIT; PDFsharp pinned below the AGPL versions; `THIRD-PARTY-NOTICES.txt` |
+
+## 10. Adding new requirements
+
+New feature requests go through the same steps as v1.0:
+
+1. **Record:** add the request to §11, "Requests after v1.0", with a short description, why it's wanted, and the date. Nothing is built yet.
+2. **Refine:** together, agree its scope, its priority (M/S/C for the release it targets) and its answers to any open questions. Then give it a requirement ID in the right §4 table (the next free number, e.g. FR-C13 or FR-P13; IDs are never reused) and a row in the decisions log (§7) if it changed or overrode an earlier decision.
+3. **Plan:** add a phase, or a step within one, to the implementation plan: what gets built, how it's verified (headless first; desktop tests by arrangement), and its exit criteria.
+4. **Build and verify,** then update §9 of this document, the user guide and the README.
+
+## 11. Requests after v1.0
+
+*None yet.* Candidates already on file are the deferred Could items: FR-C12 region of interest, FR-P11 print clean-up, FR-P12 alignment, and ARM64. The implementation plan (§13) lists further ideas.
