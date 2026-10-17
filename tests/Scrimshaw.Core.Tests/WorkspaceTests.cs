@@ -435,3 +435,117 @@ public class SettingsCompatibilityTests
         Assert.Equal(1.0, s.IntervalSeconds);
     }
 }
+
+public class WorkspaceHardeningTests
+{
+    [Fact]
+    public void A_workspace_can_only_be_open_once()
+    {
+        using var dir = new TempDir();
+        using Workspace first = Workspace.Create(dir.Path);
+        WorkspaceException ex = Assert.Throws<WorkspaceException>(() => Workspace.Open(dir.Path, new FakeCodec()));
+        Assert.Equal(WorkspaceProblem.InUse, ex.Problem);
+    }
+
+    [Fact]
+    public void Closing_releases_the_workspace_and_removes_the_lock_file()
+    {
+        using var dir = new TempDir();
+        Workspace.Create(dir.Path).Dispose();
+        Assert.False(File.Exists(dir.Sub(Workspace.LockFileName)));
+        using Workspace again = Workspace.Open(dir.Path, new FakeCodec());
+        Assert.True(File.Exists(dir.Sub(Workspace.LockFileName)));
+    }
+
+    [Fact]
+    public void A_stale_lock_file_left_by_a_crash_doesnt_block_opening()
+    {
+        using var dir = new TempDir();
+        Workspace.Create(dir.Path).Dispose();
+        File.WriteAllText(dir.Sub(Workspace.LockFileName), ""); // left behind, but nobody holds it
+        using Workspace ws = Workspace.Open(dir.Path, new FakeCodec());
+        Assert.True(ws.Recovery.IsClean);
+    }
+
+    [Theory]
+    [InlineData(WorkspaceProblem.NotAWorkspace)]
+    [InlineData(WorkspaceProblem.FolderNotEmpty)]
+    [InlineData(WorkspaceProblem.Damaged)]
+    public void Problems_are_classified(WorkspaceProblem expected)
+    {
+        using var dir = new TempDir();
+        Directory.CreateDirectory(dir.Path);
+        WorkspaceException ex;
+        switch (expected)
+        {
+            case WorkspaceProblem.NotAWorkspace:
+                ex = Assert.Throws<WorkspaceException>(() => Workspace.Open(dir.Path, new FakeCodec()));
+                break;
+            case WorkspaceProblem.FolderNotEmpty:
+                File.WriteAllText(dir.Sub("x.txt"), "x");
+                ex = Assert.Throws<WorkspaceException>(() => Workspace.Create(dir.Path));
+                break;
+            default:
+                Workspace.Create(dir.Path).Dispose();
+                File.WriteAllText(dir.Sub(Workspace.ManifestFileName), "{ broken");
+                ex = Assert.Throws<WorkspaceException>(() => Workspace.Open(dir.Path, new FakeCodec()));
+                Assert.EndsWith(Workspace.ManifestFileName, ex.DamagedFile, StringComparison.Ordinal);
+                break;
+        }
+        Assert.Equal(expected, ex.Problem);
+    }
+
+    [Fact]
+    public void Repair_rebuilds_a_damaged_manifest_from_the_images_and_keeps_the_damaged_file()
+    {
+        using var dir = new TempDir();
+        var codec = new FakeCodec();
+        using (Workspace ws = Workspace.Create(dir.Path))
+        {
+            foreach (int seq in new[] { 1, 2 })
+            {
+                var f = new FrameRecord { Seq = seq, File = ws.RelativeFramePath(seq), CapturedAt = DateTimeOffset.UnixEpoch, Width = 64, Height = 36, DHash = "0" };
+                codec.Encode(Synthetic.Solid(64, 36, 0), ws.FullPath(f), ImageFormat.Png, 0);
+                ws.Manifest.AddFrame(f);
+            }
+        }
+        File.WriteAllText(dir.Sub(Workspace.ManifestFileName), "{ broken");
+
+        using Workspace repaired = Workspace.OpenWithRepair(dir.Path, codec);
+
+        Assert.Equal([1, 2], repaired.Manifest.Current.Frames.Select(f => f.Seq));
+        string aside = Assert.Single(repaired.Recovery.SetAsideFiles);
+        Assert.Equal("{ broken", File.ReadAllText(aside));
+        Assert.False(repaired.Recovery.IsClean);
+    }
+
+    [Fact]
+    public void Repair_resets_damaged_settings_to_defaults()
+    {
+        using var dir = new TempDir();
+        Workspace.Create(dir.Path, new WorkspaceSettings { IntervalSeconds = 2 }).Dispose();
+        File.WriteAllText(dir.Sub(Workspace.SettingsFileName), "not json");
+
+        using Workspace repaired = Workspace.OpenWithRepair(dir.Path, new FakeCodec());
+
+        Assert.Equal(1.0, repaired.Settings.IntervalSeconds);
+        Assert.Single(repaired.Recovery.SetAsideFiles);
+    }
+
+    [Fact]
+    public void Repair_of_a_healthy_workspace_changes_nothing()
+    {
+        using var dir = new TempDir();
+        Workspace.Create(dir.Path).Dispose();
+        using Workspace ws = Workspace.OpenWithRepair(dir.Path, new FakeCodec());
+        Assert.True(ws.Recovery.IsClean);
+    }
+
+    [Fact]
+    public void Free_space_is_reported_for_local_folders()
+    {
+        using var dir = new TempDir();
+        using Workspace ws = Workspace.Create(dir.Path);
+        Assert.True(ws.FreeBytes > 0);
+    }
+}

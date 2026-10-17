@@ -39,15 +39,31 @@ internal static class ScrimshawJson
         }
         catch (JsonException ex)
         {
-            throw new WorkspaceException($"'{Path.GetFileName(path)}' is damaged and can't be read.", ex);
+            throw new WorkspaceException($"'{Path.GetFileName(path)}' is damaged and can't be read.", WorkspaceProblem.Damaged, ex) { DamagedFile = path };
         }
 
         if (value is null)
-            throw new WorkspaceException($"'{Path.GetFileName(path)}' is empty.");
+            throw new WorkspaceException($"'{Path.GetFileName(path)}' is empty.", WorkspaceProblem.Damaged) { DamagedFile = path };
         if (version(value) > supported)
-            throw new WorkspaceException($"'{Path.GetFileName(path)}' was written by a newer version of Scrimshaw.");
+            throw new WorkspaceException($"'{Path.GetFileName(path)}' was written by a newer version of Scrimshaw.", WorkspaceProblem.NewerVersion);
         return value;
     }
+}
+
+/// <summary>Why a workspace couldn't be created or opened, so the app can offer the right fix.</summary>
+public enum WorkspaceProblem
+{
+    Other,
+    NotAWorkspace,
+    FolderNotEmpty,
+
+    /// <summary>A settings or manifest file can't be read; <see cref="Workspace.OpenWithRepair"/> can rebuild it.</summary>
+    Damaged,
+
+    NewerVersion,
+
+    /// <summary>Another Scrimshaw window has the workspace open.</summary>
+    InUse,
 }
 
 public sealed class WorkspaceException : Exception
@@ -55,4 +71,11 @@ public sealed class WorkspaceException : Exception
     public WorkspaceException() { }
     public WorkspaceException(string message) : base(message) { }
     public WorkspaceException(string message, Exception inner) : base(message, inner) { }
+
+    public WorkspaceException(string message, WorkspaceProblem problem, Exception? inner = null) : base(message, inner) => Problem = problem;
+
+    public WorkspaceProblem Problem { get; }
+
+    /// <summary>For <see cref="WorkspaceProblem.Damaged"/>: the file that couldn't be read.</summary>
+    public string? DamagedFile { get; init; }
 }
