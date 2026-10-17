@@ -219,4 +219,48 @@ New feature requests go through the same steps as v1.0:
 
 ## 11. Requests after v1.0
 
-*None yet.* Candidates already on file are the deferred Could items: FR-C12 region of interest, FR-P11 print clean-up, FR-P12 alignment, and ARM64. The implementation plan (§13) lists further ideas.
+Status key: **Recorded** (written down, not yet reviewed) → **Refined** (scope agreed; requirement ID and priority assigned in §4) → **Planned** → **Done**.
+
+Other candidates already on file are the deferred Could items: FR-C12 region of interest, FR-P11 print clean-up, FR-P12 alignment, and ARM64. The implementation plan (§13) lists further ideas.
+
+### R1. Preview the selected capture source
+
+| | |
+|---|---|
+| Status | **Recorded** 2026-10-17 |
+| Area | Capture (would become FR-C13) |
+
+**Request.** When a capture source is selected, show a preview of it so the user can check it's the right one before starting capture. The preview would appear in the "Latest saved frame" area. Previewing doesn't record anything: no frames are saved and change detection isn't affected.
+
+**Why.** Picking the wrong source is easy: several browser windows can have similar titles, and "whole desktop" and a single monitor look alike in the list. Today the mistake only shows once frames start arriving.
+
+**Questions for review** (with a suggestion for each):
+
+1. *Live or snapshot?* Should the preview keep updating, or show one picture taken when the source is chosen? **Suggest:** refresh about once a second while a source is selected and capture isn't running, so starting the video shows up.
+2. *What does the area show when the workspace already has frames?* **Suggest:** the preview, with a clear "Preview: not saved" label, whenever capture isn't running. During capture and straight after stopping, the latest saved frame as now. Re-selecting a source returns to the preview.
+3. *Workspace required?* The capture panel is currently disabled until a workspace is open. **Suggest:** keep that; the preview needs no workspace technically, but it keeps the flow simple.
+4. *Show the source's size?* **Suggest:** yes, e.g. "1920×1080", which also helps judge print quality (A8).
+5. *Windows 10 capture border.* Previewing uses the same capture API, so on Windows 10 the yellow border would appear while previewing. **Suggest:** acceptable, as for capture (A6).
+6. *Sources that can't be previewed* (e.g. a minimised window, which captures nothing). **Suggest:** show "Nothing to preview: is the window minimised?" instead of a blank area.
+
+### R2. Capture timer for unattended use
+
+| | |
+|---|---|
+| Status | **Recorded** 2026-10-17 |
+| Area | Capture (would become FR-C14) |
+
+**Request.** The user can enter a capture time. The timer counts down while capture is running and pauses when capture is stopped, keeping the time left. When it reaches zero, capture stops automatically, exactly as if the user had pressed Stop.
+
+**Why.** It allows unattended capture: enter the video's length, start, play, and walk away. Capture ends on its own instead of recording the end screen and whatever autoplays next.
+
+**Questions for review** (with a suggestion for each):
+
+1. *Format.* **Suggest:** minutes and seconds (`m:ss`, e.g. `2:15`), also accepting hours (`h:mm:ss`) and plain minutes (`3` = 3 minutes).
+2. *Optional?* **Suggest:** off by default (blank means no timer), so today's behaviour is unchanged.
+3. *After it reaches zero,* what does the next Start do? **Suggest:** the timer resets to the entered time. A **Reset** button restores the full time after a partial run.
+4. *Saved where?* **Suggest:** per workspace, since each workspace is one video; the time is remembered with the other capture settings.
+5. *Other stops* (Stop button, Ctrl+Alt+S, target closed, disk error): **suggest** they all pause the timer the same way.
+6. *Display.* **Suggest:** the time left shown large in the capture panel ("Stops in 1:42") and in the status bar, plus a status message when the timer ends capture.
+7. *Changing the time while paused or capturing?* **Suggest:** allowed while stopped (it replaces the time left); locked while capturing.
+8. *A related option to consider:* also stop automatically when the captured window's **title changes**, which is what happens when YouTube autoplays the next video. The Harness `record` command already does this, and it needs no time entered. **Suggest:** consider adding it as a separate checkbox, alongside the timer or instead of it.
