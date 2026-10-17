@@ -91,9 +91,9 @@
 
                                 <TextBlock Text="Image format" Style="{StaticResource FieldLabel}" />
                                 <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanChangeFormat}">
-                                    <RadioButton Content="PNG (lossless)" IsChecked="{Binding IsJpeg, Converter={StaticResource InverseBool}}"
+                                    <RadioButton GroupName="Format" Content="PNG (lossless)" IsChecked="{Binding IsJpeg, Converter={StaticResource InverseBool}}"
                                                  AutomationProperties.AutomationId="FormatPng" />
-                                    <RadioButton Content="JPEG (smaller)" Margin="16,0,0,0" IsChecked="{Binding IsJpeg}"
+                                    <RadioButton GroupName="Format" Content="JPEG (smaller)" Margin="16,0,0,0" IsChecked="{Binding IsJpeg}"
                                                  AutomationProperties.AutomationId="FormatJpeg" />
                                 </StackPanel>
                                 <DockPanel Margin="0,6,0,0" Visibility="{Binding IsJpeg, Converter={StaticResource BoolToVisibility}}"

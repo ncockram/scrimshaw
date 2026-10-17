@@ -19,21 +19,22 @@
             <StackPanel Margin="12" IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
                 <TextBlock Text="PDF layout" Style="{StaticResource SectionHeader}" />
 
+                <!-- Each choice needs its own GroupName: radio buttons sharing a parent panel otherwise form one group (Phase 5 bug). -->
                 <TextBlock Text="Arrangement" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
-                <RadioButton Content="Stacked: several crops per page" IsChecked="{Binding IsStacked}" AutomationProperties.AutomationId="LayoutStacked" />
-                <RadioButton Content="One crop per page" Margin="0,4,0,0" IsChecked="{Binding IsStacked, Converter={StaticResource InverseBool}}"
+                <RadioButton GroupName="Arrangement" Content="Stacked: several crops per page" IsChecked="{Binding IsStacked}" AutomationProperties.AutomationId="LayoutStacked" />
+                <RadioButton GroupName="Arrangement" Content="One crop per page" Margin="0,4,0,0" IsChecked="{Binding IsStacked, Converter={StaticResource InverseBool}}"
                              AutomationProperties.AutomationId="LayoutOnePerPage" />
 
                 <TextBlock Text="Size" Style="{StaticResource FieldLabel}" />
-                <RadioButton Content="Same scale for every crop (staves stay one size)" IsChecked="{Binding IsSharedScale}"
+                <RadioButton GroupName="Size" Content="Same scale for every crop (staves stay one size)" IsChecked="{Binding IsSharedScale}"
                              AutomationProperties.AutomationId="ScaleShared" />
-                <RadioButton Content="Each crop fills the page width" Margin="0,4,0,0" IsChecked="{Binding IsSharedScale, Converter={StaticResource InverseBool}}"
+                <RadioButton GroupName="Size" Content="Each crop fills the page width" Margin="0,4,0,0" IsChecked="{Binding IsSharedScale, Converter={StaticResource InverseBool}}"
                              AutomationProperties.AutomationId="ScaleFitWidth" />
 
                 <TextBlock Text="Paper" Style="{StaticResource FieldLabel}" />
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Content="Letter" IsChecked="{Binding IsA4, Converter={StaticResource InverseBool}}" AutomationProperties.AutomationId="PaperLetter" />
-                    <RadioButton Content="A4" Margin="16,0,0,0" IsChecked="{Binding IsA4}" AutomationProperties.AutomationId="PaperA4" />
+                    <RadioButton GroupName="Paper" Content="Letter" IsChecked="{Binding IsA4, Converter={StaticResource InverseBool}}" AutomationProperties.AutomationId="PaperLetter" />
+                    <RadioButton GroupName="Paper" Content="A4" Margin="16,0,0,0" IsChecked="{Binding IsA4}" AutomationProperties.AutomationId="PaperA4" />
                     <CheckBox Content="Landscape" Margin="24,0,0,0" IsChecked="{Binding IsLandscape}" AutomationProperties.AutomationId="Landscape" />
                 </StackPanel>
 

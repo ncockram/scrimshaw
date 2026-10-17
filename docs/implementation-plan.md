@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | v1.5 (Phase 4 built; awaiting your checkpoint) |
+| Status | v1.6 (Phase 5 complete: v1.0 built) |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 
@@ -324,7 +324,7 @@ Each phase lists what gets built, how I verify it, and when it's done.
 
 **Done when** a full TestPlayer session goes all the way to a correct PDF. **→ Checkpoint: you review a PDF made from a real video, and ideally print one page.**
 
-**Status: built and verified (2026-10-16); waiting for your checkpoint.**
+**Status: complete (2026-10-16); checkpoint passed.**
 - **Built:**
   - `Scrimshaw.Export` (`PdfExporter`, caption font resolver); the Export PDF tab (options, live summary and page preview, export with progress and cancel, open PDF/folder); Harness `export`
   - 13 golden export tests (PdfPig: pages, order, positions to 0.1 pt, crop pixels, bookmarks and their targets, captions, JPEG passthrough, cancel, nothing-to-export) plus 6 view-model tests; 157 headless tests in total
@@ -355,6 +355,31 @@ Each phase lists what gets built, how I verify it, and when it's done.
 - *Not available here:* a clean Windows 10 (build 19041) machine. Windows 10 support is checked by reviewing the API calls and runtime OS checks, because no Windows 10 machine is available (§11).
 
 **Done when** v1.0 is built and the main scenario works on a real video. **→ Final checkpoint.**
+
+**Status: complete (2026-10-17); waiting for the final checkpoint.**
+- **Robustness:**
+  - workspace lock (`scrimshaw.lock`, deleted on close; a stale lock after a crash is reused)
+  - `Workspace.OpenWithRepair` for damaged settings or manifest files (damaged file kept; the manifest is rebuilt from the images)
+  - problem kinds on `WorkspaceException`, so the app gives a specific message or offers repair
+  - disk-space check before capture (refuse below 200 MB, warn below 1 GB)
+  - unhandled errors logged to `%LOCALAPPDATA%\Scrimshaw\logs`, with a friendly message, and the app keeps running
+- **Convenience:** recent workspaces (FR-W4) and window placement in `%LOCALAPPDATA%\Scrimshaw\settings.json`; app icon (Harness `icon`); About window; `THIRD-PARTY-NOTICES.txt`; version 1.0.0.
+- **Packaging:** `dotnet publish src/Scrimshaw.App -p:PublishProfile=win-x64` produces one self-contained `Scrimshaw.exe` (73 MB) plus the notices file.
+- **Docs:** `README.md` and `docs/user-guide.md`.
+- **Verified:**
+  - 176 headless tests
+  - every UI test run against the **published exe copied to a clean folder**
+  - **real-video acceptance** (V1, driven only through the UI: pick the window → capture → play → stop with Ctrl+Alt+S → box → apply to following → export) saved V1's 4 pages cleanly, page 1 without player controls (FR-D8), plus YouTube's "Up next" screen, and exported the PDF
+- **Windows 10 (R8):** checked at the API level. Every project's minimum is build 19041, and the platform analyzer (warnings as errors) rejects unguarded newer APIs. The only one used, `IsBorderRequired`, is version-guarded.
+
+### Phase 5 findings
+
+| # | Finding | Action |
+|---|---|---|
+| F31 | **Closing the window when no capture was running threw** (`Close()` called again inside `Closing`, because the clean-up completed synchronously). Before the crash handler existed, this ended the process, so closing looked normal but was actually a crash. The handler made it visible. | The second close is scheduled after the event (`Dispatcher.BeginInvoke`). The UI tests now wait for the process to exit, and the error log stayed empty. |
+| F32 | The **Export tab's Arrangement and Size radio buttons formed one group** (same parent panel), so picking one cleared the other, and the cleared state was written back to the options. Spotted in the acceptance screenshot. | `GroupName` on every radio pair (Export and Capture tabs). The export UI test checks that each group keeps its choice. |
+| F33 | The workspace lock immediately exposed a test that reopened a workspace before the app had exited. | Test fixed. The lock behaved as intended. |
+| F34 | UIA `Name` can be null for unnamed elements. | Test fix |
 
 ## 8. Testing strategy
 

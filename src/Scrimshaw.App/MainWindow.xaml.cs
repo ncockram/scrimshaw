@@ -87,6 +87,9 @@ public partial class MainWindow : Window
         await _viewModel.DisposeAsync();
         _hotkey?.Dispose();
         _closingCleanly = true;
-        Close();
+        // Close again only after this Closing event has finished: when nothing needed awaiting, we're still
+        // inside it, and Close() then throws (Phase 5: before the crash handler existed, every such close
+        // was silently a crash).
+        _ = Dispatcher.BeginInvoke(Close);
     }
 }

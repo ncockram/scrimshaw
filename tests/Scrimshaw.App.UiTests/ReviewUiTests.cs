@@ -78,7 +78,7 @@ public sealed class ReviewUiTests : IDisposable
         Screenshot(window, "3-frame2-100pct.png");
 
         window.Close();
-        Assert.True(_app!.WaitWhileMainHandleIsMissing(TimeSpan.Zero) || WaitForExit(_app), "app didn't close");
+        Assert.True(WaitForExit(_app!), "app didn't close"); // it holds the workspace lock until it exits
 
         using Workspace reopened = Workspace.Open(ws, new WicImageCodec());
         IReadOnlyList<FrameRecord> frames = reopened.Manifest.Current.Frames;
@@ -244,6 +244,15 @@ public sealed class ExportUiTests : IDisposable
         Wait.UntilInputIsProcessed();
         Thread.Sleep(800);
         Assert.Contains("9 crops from 9 frames", Find(window, "ExportSummary").Name, StringComparison.Ordinal);
+        // Every option group keeps its default selection (they once shared one radio group).
+        foreach (string id in new[] { "LayoutStacked", "ScaleShared", "PaperLetter" })
+            Assert.True(Find(window, id).AsRadioButton().IsChecked, $"{id} should be selected");
+        Find(window, "LayoutOnePerPage").AsRadioButton().Click();
+        Wait.UntilInputIsProcessed();
+        Assert.True(Find(window, "ScaleShared").AsRadioButton().IsChecked, "changing the arrangement must not clear the size choice");
+        Assert.Contains("→ 9 pages", Find(window, "ExportSummary").Name, StringComparison.Ordinal);
+        Find(window, "LayoutStacked").AsRadioButton().Click();
+        Wait.UntilInputIsProcessed();
         Capture.Element(window).ToFile(Path.Combine(runDir, "export-tab.png"));
 
         Find(window, "ExportPdf").AsButton().Invoke();
