@@ -510,7 +510,7 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 
 ## 14. v1.1 plan: FR-C14 → FR-C13 → FR-C12
 
-Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a phase with the same rhythm as v1: headless work first, then a desktop session arranged with you, then a checkpoint with you. **Where requirements §11 still has open questions (R2, R3), this plan assumes the suggested answers.** If you choose differently, the affected steps change before that phase starts.
+Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a phase with the same rhythm as v1: headless work first, then a desktop session arranged with you, then a checkpoint with you. All open questions were answered on 2026-10-18 (the suggested answers were accepted), so the plan stands as written.
 
 | Phase | Feature | Depends on |
 |---|---|---|

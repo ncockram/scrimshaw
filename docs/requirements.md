@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **v1.0 delivered** (§9). **v1.1 in refinement:** FR-C14, FR-C13, FR-C12 (§11). |
+| Status | **v1.0 delivered** (§9). **v1.1 refined and planned:** FR-C14, FR-C13, FR-C12 (§11; plan §14). |
 | Date | 2026-10-18 (v1.1 requests refined; v0.4 added FR-D8 after the Phase 2 real-video tests) |
 | Source | `brainstorm.md` (initial brainstorming conversation); review comments on v0.1 and v0.2 |
 
@@ -78,9 +78,9 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | FR-C9 | A global hotkey starts and stops capture, so the user doesn't have to leave the video. | S |
 | FR-C10 | If the target window is closed or a monitor is disconnected during capture, capture stops cleanly, the frames already captured are kept, and the user is told. | M |
 | FR-C11 | Starting capture again in a workspace that already has frames (e.g. resuming an interrupted capture of the same video) adds to them; numbering continues from the last frame. | S |
-| FR-C12 | **Region of interest.** The user can limit change detection (and optionally what is saved) to part of the capture source, so changes elsewhere (player controls, a progress bar, a performer inset) don't count as new pages. *Promoted from C to v1.1; details pending the questions in §11 R3.* | M (v1.1) |
+| FR-C12 | **Region of interest.** The user can mark one rectangular area of the source (by dragging on the live preview, FR-C13; **Clear** returns to the whole source). Change detection then looks only inside it, so changes elsewhere (player controls, a progress bar, a performer inset) don't count as new pages. Frames are still saved in full unless **Save only this area** is ticked, which saves the cropped area instead. The area is stored per workspace as fractions of the source's size (it survives resizes and other resolutions), its outline shows on the preview and the latest saved frame, and it can change only while capture is stopped (frames already saved are untouched). | M (v1.1) |
 | FR-C13 | **Preview the selected source.** While a source is selected and capture isn't running, the frame area shows a live preview of it, refreshed about once a second and labelled "Preview: not saved", with the source's size (e.g. 1920×1080). Previewing saves nothing and doesn't affect change detection. During capture and straight after stopping, the area shows the latest saved frame as before; selecting a source again returns to the preview. Needs an open workspace (as the capture panel does). A source that can't be previewed (e.g. a minimised window) shows "Nothing to preview: is the window minimised?". On Windows 10 the capture border appears while previewing (accepted, as A6). | M (v1.1) |
-| FR-C14 | **Stop when the window's title changes.** For window sources, capture can stop automatically when the window's title changes, as when YouTube moves on to the next video. It behaves like pressing Stop, and the status message says why. *Details pending the questions in §11 R2.* | M (v1.1) |
+| FR-C14 | **Stop when the window's title changes.** For window sources, capture stops automatically when the window's title changes from what it was when capture started, as when YouTube moves on to the next video. It's **on by default** (per workspace, with a checkbox; disabled for monitor and whole-desktop sources). A leading notification count such as "(86) " is ignored, and the new title must be seen on two consecutive checks. It behaves like pressing Stop; the status message gives the new title. Starting again follows the new title. | M (v1.1) |
 
 ### 4.3 De-duplication
 
@@ -175,6 +175,7 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | R1 | Preview the selected capture source (2026-10-18) | **All suggested answers accepted.** → FR-C13 (v1.1) |
 | R2 | Capture timer (2026-10-18) | **Replaced by auto-stop on title change**, judged a better first step. The timer stays on the ideas list (plan §13). → FR-C14 (v1.1) |
 | 2 (revisited) | Region of interest | **Promoted to v1.1**, to be built after FR-C14 and FR-C13. → FR-C12 |
+| R2, R3 | Auto-stop and region-of-interest details | **All suggested answers accepted** (2026-10-18). → FR-C14, FR-C12 |
 
 ## 8. Open questions
 
@@ -252,7 +253,7 @@ The original request, why it was wanted, and the questions with their accepted a
 
 | | |
 |---|---|
-| Status | **Refined, with questions** 2026-10-18; planned for v1.1 |
+| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 |
 | Requirement | FR-C14 (§4.2) |
 | Replaces | The capture-timer request (recorded 2026-10-17, superseded at review) |
 
@@ -274,7 +275,7 @@ Note: YouTube's end screen and "Up next" countdown appear *before* the title cha
 
 | | |
 |---|---|
-| Status | **Refined, with questions** 2026-10-18; planned for v1.1 (after FR-C14 and FR-C13) |
+| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 (after FR-C14 and FR-C13) |
 | Requirement | FR-C12 (§4.2), promoted from Could |
 
 **Request.** Let the user mark the part of the source that matters (the score), so changes elsewhere don't create extra frames.
