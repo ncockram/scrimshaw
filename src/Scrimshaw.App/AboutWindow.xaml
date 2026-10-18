@@ -15,7 +15,8 @@
 
         <TextBlock TextWrapping="Wrap" Margin="0,16,0,0">
             Turns sheet-music videos into printable PDF scores: it captures each page as the video plays,
-            lets you box the music, and stacks the boxes into a PDF.
+            lets you box the music, and stacks the boxes into a PDF. New in 1.1: a live preview of the source,
+            a music area that ignores movement elsewhere, and stopping by itself when the next video starts.
         </TextBlock>
 
         <TextBlock Text="How to use it" FontWeight="SemiBold" Margin="0,16,0,4" />

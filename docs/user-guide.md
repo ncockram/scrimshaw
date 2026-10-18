@@ -20,22 +20,36 @@ To come back to a video later, click **Open workspace…** or pick it from **Rec
 1. Open the video in your browser and switch to **full screen** (press **F** on YouTube). Use the highest video quality: the sharper the video, the sharper the printed music.
 2. **Turn off autoplay**, so the next video doesn't start and get captured too.
 3. In Scrimshaw's **Capture** tab, choose the browser window under **What to capture**. Click **Refresh** if it isn't listed.
-4. Click **Start capture**, or press **Ctrl+Alt+S** from any app.
-5. Play the video. **Keep the mouse off the video**, so the player's controls stay hidden.
-6. When the video ends, press **Ctrl+Alt+S** again (or click **Stop capture**).
+4. Check the **preview** on the right: it shows what will be captured, live, with an orange "PREVIEW · not saved" badge. Nothing is saved while previewing.
+5. Optionally, **mark the music area** (see below).
+6. Click **Start capture**, or press **Ctrl+Alt+S** from any app.
+7. Play the video. **Keep the mouse off the video**, so the player's controls stay hidden.
+8. When the video ends, capture **stops by itself** as soon as YouTube moves on to another video (the window's title changes). Otherwise press **Ctrl+Alt+S** again, or click **Stop capture**.
 
-While it captures, **New pages saved** goes up at each page turn, and the latest page appears on the right.
+While it captures, **Pages saved** goes up at each page turn, and the latest saved page appears on the right in place of the preview. After capture, click **Show preview** to see the live picture again.
+
+### Mark the music area (optional)
+
+If something on screen keeps moving besides the music (a video of the performer, a progress bar, a ticking clock), mark the part of the picture that holds the score:
+
+1. On the preview, **drag a rectangle** around the music. Everything outside it is dimmed, and the area gets a green **Music area** outline.
+2. Only changes **inside** the area now count as page turns. Pages are still saved in full.
+3. Tick **Save only this area** to save just the marked part instead.
+
+To change it, drag again; **Clear area** goes back to the whole picture. The area is kept with the workspace and can't change while capture is running. It's stored as a proportion of the picture, so it still fits if the window is resized.
 
 **Settings, if you need them:**
 - **Seconds between captures:** the default of 1 second suits almost every score video. Use 0.5 if pages turn very quickly.
 - **New page when at least …% changes:** the default of 3% catches every page turn, including half-page turns. The line underneath shows how much the picture changed at the last capture. If the same page keeps being saved again, raise the threshold a little.
 - **PNG or JPEG:** PNG is perfect quality, and JPEG uses less disk space. This can't be changed once a workspace has pages.
+- **Stop when the window's title changes** (on by default, windows only): stops capture when the next video starts. A notification count such as "(3)" at the start of the title is ignored. Untick it if your browser changes the title for other reasons.
 
 **Good to know:**
 - Scrimshaw waits for a page to **stop changing** before saving it, so fades and page-curl animations aren't saved half-finished.
 - If the player's controls were showing when a page was saved, Scrimshaw swaps in the clean version once it has been on screen longer.
 - Keep the browser window **fully on screen**. Any part that's off the edge comes out black.
 - You can start capture again in the same workspace (for example, after an interruption). New pages are added after the existing ones.
+- The status bar always says why capture stopped (you stopped it, the title changed, or the window closed).
 
 ## 3. Review and box the music
 
@@ -81,7 +95,10 @@ Click **Export PDF**, then **Open PDF** or **Open folder**. Exports are saved in
 | Captured pages are black | The video is copy-protected (some streaming services block screen capture). Ordinary YouTube videos aren't affected. |
 | A yellow border appears around the window during capture (Windows 10) | Windows 10 shows this while capturing and it can't be turned off. It isn't saved in the pages. |
 | "Ctrl+Alt+S is in use by another app" | Another program owns that shortcut. Use the Start and Stop buttons instead. |
-| The same page is saved several times | Raise **New page when at least …%** a little, and keep the mouse off the video. Delete the extras with Ctrl+D. |
+| The same page is saved several times | Raise **New page when at least …%** a little, and keep the mouse off the video. If something else on screen moves, **mark the music area**. Delete the extras with Ctrl+D. |
+| Nothing is being saved, and **Settling** stays at "yes" | Something on screen never stops moving (e.g. a performer video beside the score). **Mark the music area** around just the score. |
+| The preview says "Nothing to preview: is the window minimised?" | Restore the window. Minimised windows can't be captured or previewed. |
+| Capture stopped by itself partway through | The window's title changed (the status bar shows the new title). If the same video was still playing, untick **Stop when the window's title changes** and start again: new pages are added after the existing ones. |
 | A page turn was missed | Lower the threshold, or use a 0.5-second interval for videos that turn pages quickly. |
 | "This workspace is already open in another Scrimshaw window" | Switch to that window, or close it first. |
 | "… is damaged and can't be read" | Choose **Yes** to repair. Your captured pages are kept, and the damaged file is kept beside it as a backup. |

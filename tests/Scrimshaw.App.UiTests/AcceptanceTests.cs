@@ -138,7 +138,7 @@ public sealed class AcceptanceTests : IDisposable
             if (about is null) Thread.Sleep(100);
         }
         Assert.NotNull(about);
-        Assert.Contains(about!.FindAllDescendants(), e => (e.Name ?? "").StartsWith("Version 1.0.0", StringComparison.Ordinal));
+        Assert.Contains(about!.FindAllDescendants(), e => (e.Name ?? "").StartsWith("Version 1.1.0", StringComparison.Ordinal));
         Capture.Element(about).ToFile(Path.Combine(runDir, "about.png"));
         Find(about, "AboutClose").AsButton().Invoke();
         window.Close();

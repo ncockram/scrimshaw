@@ -9,7 +9,7 @@ public partial class AboutWindow : Window
     public AboutWindow()
     {
         InitializeComponent();
-        // Informational version is "1.0.0+<commit>"; show the commit short.
+        // Informational version is "1.1.0+<commit>"; show the commit short.
         string version = CrashLog.Version;
         int plus = version.IndexOf('+', StringComparison.Ordinal);
         VersionText.Text = plus < 0

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **v1.0 delivered** (2026-10-17). **v1.1 planned** (§14): FR-C14 → FR-C13 → FR-C12. |
+| Status | **v1.0 delivered** (2026-10-17). **v1.1 delivered** (2026-10-18, §14): FR-C14, FR-C13, FR-C12. |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | **v1.0 delivered** (§9). **v1.1 refined and planned:** FR-C14, FR-C13, FR-C12 (§11; plan §14). |
-| Date | 2026-10-18 (v1.1 requests refined; v0.4 added FR-D8 after the Phase 2 real-video tests) |
+| Status | **v1.1 delivered** (§9): v1.0 plus FR-C12, FR-C13 and FR-C14 (§11; plan §14). |
+| Date | 2026-10-18 (v1.1 delivered; v0.4 added FR-D8 after the Phase 2 real-video tests) |
 | Source | `brainstorm.md` (initial brainstorming conversation); review comments on v0.1 and v0.2 |
 
 ## 1. Purpose
@@ -152,7 +152,7 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 - **A4 — Pause gaps.** Video playback is controlled by the user outside the app. Scrimshaw doesn't detect when a video pauses or ends.
 - **A5 — Protected content.** DRM-protected video (e.g. some streaming services) may capture as black frames. That is a platform limit, not a defect. Normal YouTube playback is not affected.
 - **A6 — Capture border.** On Windows 10, the yellow border Windows draws around captured content can't be turned off. This is accepted. The border doesn't appear in the captured frames.
-- **A7 — Player chrome.** In v1, the user is expected to keep the mouse off the video, or use theatre or fullscreen mode, so YouTube's controls stay hidden. v1.1 adds a region of interest (FR-C12) for videos where that isn't enough.
+- **A7 — Player chrome.** In v1, the user is expected to keep the mouse off the video, or use theatre or fullscreen mode, so YouTube's controls stay hidden. v1.1 adds a region of interest, the "music area" (FR-C12), for videos where that isn't enough.
 - **A8 — Source resolution.** Print quality depends on the video's resolution and the size of the player. A 1080p fullscreen capture of a full page gives roughly 200 DPI on Letter or A4, which prints acceptably. Smaller players give worse results.
 
 ## 7. Decisions log
@@ -181,9 +181,9 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 
 None on the product requirements. The development process is described in §11 of the implementation plan.
 
-## 9. v1.0 delivery status
+## 9. Delivery status (v1.1)
 
-Every **Must** and **Should** requirement is delivered. The **Could** items are deliberately deferred. "Verified" says how each was proven; the test suite has 180 headless tests plus desktop tests.
+Every **Must** and **Should** requirement is delivered, including the three v1.1 additions. The remaining **Could** items are deliberately deferred. "Verified" says how each was proven; the test suite has 240 headless tests plus desktop and UI tests.
 
 | Requirement | Status | Verified by |
 |---|---|---|
@@ -196,8 +196,9 @@ Every **Must** and **Should** requirement is delivered. The **Could** items are 
 | FR-C9 Global hotkey | Done (Should) | Real-video acceptance stops with Ctrl+Alt+S |
 | FR-C10 Target lost | Done | Unit and desktop tests |
 | FR-C11 Resume | Done (Should) | Capture-session test |
-| FR-C12 Region of interest | **Planned for v1.1** (promoted from Could) | — |
-| FR-C13 Preview, FR-C14 Stop on title change | **Planned for v1.1** | — |
+| FR-C12 Region of interest ("music area") | Done (v1.1) | Area maths, session and view-model tests; replay of the `distraction` sample (12/12 with the area, 0/12 without); desktop test with the TestPlayer's flickering strip; UI test that drags the area on the preview |
+| FR-C13 Preview the selected source | Done (v1.1) | Preview session and view-model tests (including "preview stops before capture starts"); UI test with the TestPlayer, including the minimised message |
+| FR-C14 Stop on title change | Done (v1.1) | Title-watcher and session tests; desktop test (stopped 0.5 s after the retitle); real-video acceptance stops on its own when YouTube moves on |
 | FR-D1–D8 | Done | Unit tests; replay of 5 synthetic and 4 real labelled recordings, all passing; desktop tests per turn style |
 | FR-A1–A4, A6, A10 | Done | Editor and view-model tests; UI tests with the real mouse |
 | FR-A5, A7, A8, A9, A11 | Done (Should) | Same; undo goes beyond "within a frame" (one history, and "apply to following" undoes in one step) |
@@ -234,7 +235,7 @@ Other candidates already on file are the deferred Could items: FR-P11 print clea
 
 | | |
 |---|---|
-| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 |
+| Status | **Done** in v1.1 (2026-10-18). Refined 2026-10-18 (all suggested answers accepted). |
 | Requirement | FR-C13 (§4.2) |
 
 The original request, why it was wanted, and the questions with their accepted answers are kept below for reference.
@@ -253,7 +254,7 @@ The original request, why it was wanted, and the questions with their accepted a
 
 | | |
 |---|---|
-| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 |
+| Status | **Done** in v1.1 (2026-10-18). Refined 2026-10-18 (all suggested answers accepted). |
 | Requirement | FR-C14 (§4.2) |
 | Replaces | The capture-timer request (recorded 2026-10-17, superseded at review) |
 
@@ -275,7 +276,7 @@ Note: YouTube's end screen and "Up next" countdown appear *before* the title cha
 
 | | |
 |---|---|
-| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 (after FR-C14 and FR-C13) |
+| Status | **Done** in v1.1 (2026-10-18). Refined 2026-10-18 (all suggested answers accepted). |
 | Requirement | FR-C12 (§4.2), promoted from Could |
 
 **Request.** Let the user mark the part of the source that matters (the score), so changes elsewhere don't create extra frames.
