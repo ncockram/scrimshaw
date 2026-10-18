@@ -481,7 +481,7 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 | Item | Why |
 |---|---|
 | Test on a real Windows 10 machine or VM (build 19041+) | Windows 10 support is only checked at the API level (R8) |
-| Create a remote repository and push to it | The project currently exists only on this machine |
+| ~~Create a remote repository and push to it~~ | **Done** 2026-10-18: GitHub `ncockram/scrimshaw`, private at first, MIT licence |
 | Code-sign `Scrimshaw.exe` | Without a signature, Windows SmartScreen warns on first run on other PCs |
 | Watch for .NET 10 servicing updates; rebuild and republish | Security fixes for the bundled runtime |
 | Keep PDFsharp on 6.2.x (or move to another MIT library) | 6.5+ is AGPL (F2) |

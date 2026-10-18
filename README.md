@@ -51,4 +51,4 @@ dotnet test --project tests/Scrimshaw.App.UiTests                               
 
 ## Licences
 
-Scrimshaw's dependencies are listed with their licence texts in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). **PDFsharp is pinned to 6.2.x**: version 6.5 and later is AGPL-3.0 (implementation plan, finding F2).
+Scrimshaw is released under the [MIT License](LICENSE). Its dependencies are listed with their licence texts in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). **PDFsharp is pinned to 6.2.x**: version 6.5 and later is AGPL-3.0 (implementation plan, finding F2).

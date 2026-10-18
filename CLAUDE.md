@@ -18,7 +18,7 @@ Tests use xunit v3 on Microsoft.Testing.Platform (opted in via `global.json`): f
 ## Working agreements
 
 - **Desktop runs need the user's go-ahead.** Anything that captures the screen, opens windows, moves the mouse or plays a video: ask first, say when it's done. Never use the user's own apps (e.g. Notepad) as test props; use TestPlayer or Scrimshaw's own windows, and prefer window capture to monitor capture.
-- Commit at the end of each phase and at sensible points within one. No remote.
+- Commit at the end of each phase and at sensible points within one. Remote: GitHub `ncockram/scrimshaw` (`origin`, started private); push only when asked.
 - Stop for a user checkpoint at the end of each phase that changes behaviour.
 - New features follow requirements §10: record → refine (IDs, priority) → plan → build and verify → update the docs (requirements §9, user guide, README).
 
