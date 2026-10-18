@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scrimshaw.App.Services;
@@ -38,12 +39,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly IThumbnailService _thumbnails;
     private readonly IShellService _shell;
     private readonly IAppSettingsStore _appSettings;
+    private readonly IPreviewService _preview;
+    private IPreviewSession? _previewSession;
+    private (CaptureTarget Target, bool Cursor)? _previewKey;
     private Workspace? _workspace;
     private CaptureSession? _session;
     private int _framesAtStart;
 
     public MainViewModel(IDialogService dialogs, IUiDispatcher ui, ITargetProvider targets, ICaptureService capture,
-        IThumbnailService? thumbnails = null, IShellService? shell = null, IAppSettingsStore? appSettings = null)
+        IThumbnailService? thumbnails = null, IShellService? shell = null, IAppSettingsStore? appSettings = null,
+        IPreviewService? preview = null)
     {
         _dialogs = dialogs;
         _ui = ui;
@@ -52,6 +57,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         _thumbnails = thumbnails ?? NoThumbnails.Instance;
         _shell = shell ?? new ShellService();
         _appSettings = appSettings ?? new InMemoryAppSettingsStore();
+        _preview = preview ?? NoPreview.Instance;
         foreach (string folder in _appSettings.Load().Recent.Where(Directory.Exists)) RecentWorkspaces.Add(folder);
         IntervalText = FormatInterval(1.0);
         ThresholdPercent = 3;
@@ -82,9 +88,34 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public partial string? WorkspacePath { get; private set; }
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(ShowPreviewCommand))]
     [NotifyPropertyChangedFor(nameof(CanStopOnTitleChange))]
     public partial TargetOption? SelectedTarget { get; set; }
+
+    /// <summary>
+    /// FR-C13: the frame area shows a live, unsaved preview of the selected source (true) or the latest saved
+    /// frame (false). The preview only actually runs while the Capture tab is showing and capture is stopped.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FrameAreaHeader))]
+    [NotifyCanExecuteChangedFor(nameof(ShowPreviewCommand))]
+    public partial bool IsPreviewing { get; private set; }
+
+    [ObservableProperty]
+    public partial BitmapSource? PreviewImage { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FrameAreaHeader))]
+    public partial string? PreviewSize { get; private set; }
+
+    /// <summary>Why there's no preview picture (e.g. the window is minimised), or null.</summary>
+    [ObservableProperty]
+    public partial string? PreviewProblem { get; private set; }
+
+    public string FrameAreaHeader => IsPreviewing
+        ? $"Preview: not saved{(PreviewSize is null ? "" : $" ({PreviewSize})")}"
+        : string.Create(CultureInfo.CurrentCulture,
+            $"Latest saved frame{(LatestFrameSize is null ? "" : $" ({LatestFrameSize})")} · {FrameCount} frames in this workspace");
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand))]
@@ -114,17 +145,18 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat), nameof(CanStopOnTitleChange))]
-    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand), nameof(ShowPreviewCommand))]
     public partial bool IsCapturing { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanChangeFormat))]
+    [NotifyPropertyChangedFor(nameof(CanChangeFormat), nameof(FrameAreaHeader))]
     public partial int FrameCount { get; private set; }
 
     [ObservableProperty]
     public partial string? LatestFramePath { get; private set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FrameAreaHeader))]
     public partial string? LatestFrameSize { get; private set; }
 
     [ObservableProperty]
@@ -299,6 +331,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 $"Only {free / (1024.0 * 1024):0} MB is free on the workspace's drive. Free up some space, or use a workspace on another drive."));
             return;
         }
+        // Never two capture sessions on one source: the preview goes first (FR-C13, risk R10).
+        IsPreviewing = false;
+        UpdatePreview();
         try
         {
             SaveSettings(interval);
@@ -338,8 +373,18 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         else if (StartCaptureCommand.CanExecute(null)) StartCaptureCommand.Execute(null);
     }
 
+    [RelayCommand(CanExecute = nameof(CanShowPreview))]
+    private void ShowPreview()
+    {
+        IsPreviewing = true;
+        UpdatePreview();
+    }
+
+    private bool CanShowPreview() => !IsPreviewing && CanEditSettings && SelectedTarget is not null;
+
     public async ValueTask DisposeAsync()
     {
+        StopPreviewSession();
         if (_session is { } s) await s.StopAsync();
         Review?.Dispose();
         Review = null;
@@ -376,8 +421,69 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     private bool CanSwitchWorkspace() => !IsCapturing;
 
+    partial void OnSelectedTargetChanged(TargetOption? value)
+    {
+        // Choosing a source shows its preview (FR-C13); "choosing again" is the Show preview button.
+        if (value is not null && CanEditSettings) IsPreviewing = true;
+        UpdatePreview();
+    }
+
+    partial void OnSelectedTabChanged(int value) => UpdatePreview();
+
+    partial void OnIncludeCursorChanged(bool value) => UpdatePreview();
+
+    /// <summary>Starts, restarts or stops the preview session to match the current state.</summary>
+    private void UpdatePreview()
+    {
+        bool wanted = IsPreviewing && SelectedTab == 0 && HasWorkspace && !IsCapturing && SelectedTarget is not null;
+        if (!wanted)
+        {
+            StopPreviewSession();
+            return;
+        }
+        var key = (SelectedTarget!.Target, IncludeCursor);
+        if (_previewSession is not null && _previewKey == key) return;
+
+        StopPreviewSession();
+        PreviewImage = null;
+        PreviewSize = null;
+        PreviewProblem = null;
+        try
+        {
+            _previewSession = _preview.Start(key.Target, key.IncludeCursor);
+            _previewKey = key;
+            _previewSession.Frame += OnPreviewFrame;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            PreviewProblem = $"Preview unavailable: {ex.Message}";
+        }
+    }
+
+    private void StopPreviewSession()
+    {
+        if (_previewSession is { } p)
+        {
+            p.Frame -= OnPreviewFrame;
+            p.Dispose();
+        }
+        _previewSession = null;
+        _previewKey = null;
+    }
+
+    private void OnPreviewFrame(object? sender, PreviewFrame frame) => _ui.Post(() =>
+    {
+        if (!ReferenceEquals(sender, _previewSession)) return; // a frame from a session that's since stopped
+        PreviewImage = frame.Image;
+        PreviewProblem = frame.Problem;
+        if (frame.Problem is null)
+            PreviewSize = string.Create(CultureInfo.CurrentCulture, $"{frame.Width}×{frame.Height}");
+    });
+
     private void SwitchTo(Workspace ws)
     {
+        IsPreviewing = false;
+        StopPreviewSession();
         if (_workspace is not null) SaveSettingsQuietly();
         Review?.Dispose();
         ExportTab?.Dispose();
@@ -406,6 +512,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             CaptureTarget? match = CaptureTargets.Resolve(s.Target, Targets.Select(t => t.Target).ToList());
             if (match is not null) SelectedTarget = Targets.First(o => o.Target == match);
         }
+        if (SelectedTarget is not null) IsPreviewing = true;
+        UpdatePreview();
     }
 
     private void SaveSettings(double interval)
@@ -484,4 +592,19 @@ internal sealed class NoThumbnails : IThumbnailService
     public static readonly NoThumbnails Instance = new();
 
     public Task<string?> GetAsync(string framePath, string thumbsFolder, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+}
+
+/// <summary>Used when no preview service is supplied (tests): previews never produce frames.</summary>
+internal sealed class NoPreview : IPreviewService
+{
+    public static readonly NoPreview Instance = new();
+
+    public IPreviewSession Start(CaptureTarget target, bool includeCursor) => new Session();
+
+    private sealed class Session : IPreviewSession
+    {
+        public event EventHandler<PreviewFrame>? Frame { add { } remove { } }
+
+        public void Dispose() { }
+    }
 }

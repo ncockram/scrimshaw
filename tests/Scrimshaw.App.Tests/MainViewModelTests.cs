@@ -68,8 +68,12 @@ internal sealed class FakeCapture(FakeTimeProvider time, Func<ScriptedSource> so
     /// <summary>What the captured window's title currently reads (FR-C14 tests).</summary>
     public string? WindowTitle { get; set; } = "Video - YouTube";
 
+    /// <summary>Runs just before a session is created (e.g. to check the preview has already stopped).</summary>
+    public Action? BeforeStart { get; set; }
+
     public CaptureSession Start(Workspace workspace, CaptureTarget target)
     {
+        BeforeStart?.Invoke();
         LastTarget = target;
         LastSource = source();
         Last = new CaptureSession(workspace, LastSource, Codec, time, CaptureService.OptionsFor(workspace, target, () => WindowTitle));

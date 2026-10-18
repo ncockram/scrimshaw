@@ -153,6 +153,9 @@ public static unsafe class CaptureTargets
 
     public static bool IsWindowAlive(IntPtr hwnd) => NativeMethods.IsWindow(hwnd);
 
+    /// <summary>True if the window is minimised (it then delivers no new frames; FR-C13).</summary>
+    public static bool IsWindowMinimized(IntPtr hwnd) => NativeMethods.IsIconic(hwnd);
+
     /// <summary>The window's current title, or null if the window no longer exists (FR-C14).</summary>
     public static string? GetWindowTitle(IntPtr hwnd) => NativeMethods.IsWindow(hwnd) ? NativeMethods.ReadWindowText(hwnd) : null;
 

@@ -176,22 +176,48 @@
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- Latest frame -->
+                        <!-- Frame area: live preview of the selected source (FR-C13) or the latest saved frame -->
                         <DockPanel Grid.Column="1" Margin="12">
-                            <TextBlock DockPanel.Dock="Top" Style="{StaticResource SectionHeader}">
-                                <Run Text="Latest saved frame" />
-                                <Run Text="{Binding LatestFrameSize, Mode=OneWay, StringFormat=({0})}" FontWeight="Normal" />
-                                <Run Text="·" FontWeight="Normal" />
-                                <Run Text="{Binding FrameCount, Mode=OneWay}" FontWeight="Normal" />
-                                <Run Text="frames in this workspace" FontWeight="Normal" />
-                            </TextBlock>
-                            <Border BorderThickness="1" BorderBrush="{x:Static SystemColors.ActiveBorderBrush}" Background="#FFF4F4F4">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Content="Show preview" Command="{Binding ShowPreviewCommand}"
+                                        ToolTip="Show a live preview of the selected source (nothing is saved)"
+                                        AutomationProperties.AutomationId="ShowPreview" />
+                                <TextBlock Text="{Binding FrameAreaHeader}" Style="{StaticResource SectionHeader}" Margin="0" VerticalAlignment="Center"
+                                           AutomationProperties.AutomationId="FrameAreaHeader" />
+                            </DockPanel>
+                            <Border BorderThickness="1" Background="#FFF4F4F4">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{x:Static SystemColors.ActiveBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPreviewing}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#FFE67E22" />
+                                                <Setter Property="BorderThickness" Value="2" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <Grid>
-                                    <Image Source="{Binding LatestFramePath, Converter={StaticResource PathToImage}}" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.AutomationId="LatestFrame" />
-                                    <TextBlock Text="Frames appear here as pages are captured." HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Style="{StaticResource Hint}"
-                                               Visibility="{Binding LatestFramePath, Converter={StaticResource VisibleIfUnset}}" />
+                                    <!-- Latest saved frame -->
+                                    <Grid Visibility="{Binding IsPreviewing, Converter={StaticResource HiddenIfTrue}}">
+                                        <Image Source="{Binding LatestFramePath, Converter={StaticResource PathToImage}}" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.AutomationId="LatestFrame" />
+                                        <TextBlock Text="Choose what to capture to preview it here. Saved frames appear here as pages are captured."
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" Style="{StaticResource Hint}"
+                                                   Visibility="{Binding LatestFramePath, Converter={StaticResource VisibleIfUnset}}" />
+                                    </Grid>
+                                    <!-- Live preview -->
+                                    <Grid Visibility="{Binding IsPreviewing, Converter={StaticResource BoolToVisibility}}">
+                                        <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                               AutomationProperties.Name="Preview" AutomationProperties.AutomationId="PreviewImage" />
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Padding="8,2" CornerRadius="3"
+                                                Background="#E6E67E22" AutomationProperties.AutomationId="PreviewBadge">
+                                            <TextBlock Text="PREVIEW · not saved" Foreground="White" FontWeight="SemiBold" />
+                                        </Border>
+                                        <TextBlock Text="{Binding PreviewProblem}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                   FontSize="14" Margin="24" TextAlignment="Center" AutomationProperties.AutomationId="PreviewProblem"
+                                                   Visibility="{Binding PreviewProblem, Converter={StaticResource VisibleIfSet}}" />
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </DockPanel>

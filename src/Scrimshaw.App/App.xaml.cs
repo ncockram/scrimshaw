@@ -38,7 +38,8 @@ public partial class App : Application
             new CaptureService(new WicImageCodec()),
             _thumbnails,
             new ShellService(),
-            new AppSettingsStore(AppSettingsStore.DefaultPath));
+            new AppSettingsStore(AppSettingsStore.DefaultPath),
+            new PreviewService());
         window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();
