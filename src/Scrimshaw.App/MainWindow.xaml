@@ -211,8 +211,10 @@
                                         <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
                                                AutomationProperties.Name="Preview" AutomationProperties.AutomationId="PreviewImage" />
                                         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Padding="8,2" CornerRadius="3"
-                                                Background="#E6E67E22" AutomationProperties.AutomationId="PreviewBadge">
-                                            <TextBlock Text="PREVIEW · not saved" Foreground="White" FontWeight="SemiBold" />
+                                                Background="#E6E67E22">
+                                            <!-- The id goes on the text: a Border isn't exposed to UI Automation -->
+                                            <TextBlock Text="PREVIEW · not saved" Foreground="White" FontWeight="SemiBold"
+                                                       AutomationProperties.AutomationId="PreviewBadge" />
                                         </Border>
                                         <TextBlock Text="{Binding PreviewProblem}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
                                                    FontSize="14" Margin="24" TextAlignment="Center" AutomationProperties.AutomationId="PreviewProblem"

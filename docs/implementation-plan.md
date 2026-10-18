@@ -572,6 +572,16 @@ Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a p
 
 **Done when** all the above pass. **→ Checkpoint: you try picking sources with the preview.**
 
+**Status: built and verified (2026-10-18); waiting for your checkpoint.**
+- 217 headless tests (22 new: downscale, preview session, and preview view-model behaviour including "preview stops before capture starts").
+- **Desktop (FlaUI with the TestPlayer):** choosing it shows "Preview: not saved (1280×720)" with the badge, and nothing is saved while previewing. Capture switches to the latest frame; Show preview returns; minimising the window shows the minimised message. The workspace holds only the one captured frame. Every other UI test still passes.
+
+| # | Finding | Action |
+|---|---|---|
+| F37 | `ImageOps.Downscale` read past the image when its size wasn't a multiple of the shrink factor (e.g. a 1081-px-tall window). Caught by a unit test. | Edge blocks are clipped and averaged over real pixels; tests for odd sizes |
+| F38 | WPF `Border` elements aren't exposed to UI Automation, so automation IDs on them can't be found. | IDs go on the text or control inside |
+| F39 | UI Automation won't minimise a window without a minimise button (TestPlayer is fixed-size). | The test minimises it with `ShowWindow` |
+
 ### Phase 8 — FR-C12 Region of interest
 
 **Build** (assuming the R3 suggestions):

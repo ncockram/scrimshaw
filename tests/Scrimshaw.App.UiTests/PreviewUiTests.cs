@@ -3,7 +3,6 @@ using System.Globalization;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
-using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
 using FlaUI.UIA3;
 using Scrimshaw.Core.Workspaces;
@@ -13,7 +12,7 @@ namespace Scrimshaw.App.UiTests;
 
 /// <summary>FR-C13 in the real app, previewing the TestPlayer window (desktop only, coordinate first).</summary>
 [Trait("Category", "Desktop")]
-public sealed class PreviewUiTests : IDisposable
+public sealed partial class PreviewUiTests : IDisposable
 {
     private readonly UIA3Automation _automation = new();
     private Application? _app;
@@ -74,7 +73,8 @@ public sealed class PreviewUiTests : IDisposable
         // Show preview again, then minimise the source.
         Find(window, "ShowPreview").AsButton().Invoke();
         WaitForName(window, "FrameAreaHeader", h => h.StartsWith("Preview", StringComparison.Ordinal));
-        playerWindow!.Patterns.Window.Pattern.SetWindowVisualState(WindowVisualState.Minimized);
+        // The TestPlayer has no minimise button (fixed size), so UIA refuses; ask Windows directly.
+        ShowWindow(playerWindow!.Properties.NativeWindowHandle.Value, 6 /* SW_MINIMIZE */);
         string problem = WaitForName(window, "PreviewProblem", p => p.Length > 0);
         Assert.Contains("minimised", problem, StringComparison.Ordinal);
         Screenshot(window, runDir, "3-minimised.png");
@@ -124,6 +124,10 @@ public sealed class PreviewUiTests : IDisposable
         }
         throw new InvalidOperationException($"'{automationId}' not found");
     }
+
+    [System.Runtime.InteropServices.LibraryImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static partial bool ShowWindow(IntPtr hwnd, int command);
 
     private static void Screenshot(Window window, string dir, string name)
     {
