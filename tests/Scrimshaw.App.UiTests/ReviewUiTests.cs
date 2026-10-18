@@ -137,7 +137,7 @@ public sealed class ReviewUiTests : IDisposable
 
     private Window Launch(string workspace)
     {
-        var psi = new ProcessStartInfo(AppExe.Path) { UseShellExecute = false };
+        var psi = AppExe.StartInfo();
         psi.ArgumentList.Add(workspace);
         _app = Application.Launch(psi);
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(15)) ?? throw new TimeoutException("main window didn't appear");
@@ -234,7 +234,7 @@ public sealed class ExportUiTests : IDisposable
             }
         }
 
-        var psi = new ProcessStartInfo(AppExe.Path) { UseShellExecute = false };
+        var psi = AppExe.StartInfo();
         psi.ArgumentList.Add(Path.Combine(runDir, "workspace"));
         _app = Application.Launch(psi);
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(15))!;
@@ -292,6 +292,14 @@ public sealed class ExportUiTests : IDisposable
 /// </summary>
 internal static class AppExe
 {
+    /// <summary>Starts the app with its own throwaway settings file, so tests never touch the user's settings.</summary>
+    public static ProcessStartInfo StartInfo()
+    {
+        var psi = new ProcessStartInfo(Path) { UseShellExecute = false };
+        psi.Environment["SCRIMSHAW_SETTINGS_PATH"] = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "scrimshaw-uitests", Guid.NewGuid().ToString("N") + ".json");
+        return psi;
+    }
+
     public static string Path => Environment.GetEnvironmentVariable("SCRIMSHAW_EXE") is { Length: > 0 } exe
         ? exe
         : System.IO.Path.Combine(RepoRoot(), "src", "Scrimshaw.App", "bin", "Debug", "net10.0-windows10.0.26100.0", "Scrimshaw.exe");

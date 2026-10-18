@@ -30,5 +30,5 @@ Tests use xunit v3 on Microsoft.Testing.Platform (opted in via `global.json`): f
 - JSON (source-generated): optional properties use `set`, not `init`, or missing fields are read as null/0 (F27).
 - **Don't upgrade PDFsharp past 6.2.x** (6.5+ is AGPL, F2). PDF outline `Top` is measured from the page bottom (F4).
 - WPF: two-way bindings to read-only properties crash (F28); give every radio-button pair a `GroupName` (F32); never call `Close()` synchronously inside `OnClosing` (F31).
-- UI tests run serially (one collection); use `SCRIMSHAW_EXE` to test the published exe.
+- UI tests run serially (one collection); use `SCRIMSHAW_EXE` to test the published exe. Launch the app via `AppExe.StartInfo()`, which sets `SCRIMSHAW_SETTINGS_PATH` to a throwaway file, so tests never touch the user's Recent list or window position (F35). Collapsed elements aren't in the UIA tree (F36).
 - Change detection is tuned against `samples/` (labels committed, frames git-ignored). After touching detection, run `replay` on every sample; all must PASS.

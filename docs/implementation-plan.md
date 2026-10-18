@@ -537,6 +537,16 @@ Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a p
 
 **Done when** all the above pass. **→ Checkpoint: you try a real video unattended.**
 
+**Status: built and verified (2026-10-18); waiting for your checkpoint.**
+- 195 headless tests (15 new).
+- **Desktop:** the TestPlayer renaming itself at 5 s stopped capture at 5.5 s with `TitleChanged`, keeping the 2 pages shown before. All earlier capture tests still pass.
+- **Real video (V1), through the UI only:** stopped **by itself** after 131 s when YouTube moved on ("…title changed to '(86) Vladimir Rebikov – Feuilles d'automne…'"), saved 5 frames and exported.
+
+| # | Finding | Action |
+|---|---|---|
+| F35 | **UI tests were reading and writing the user's real app settings.** They filled the Recent list with test workspaces and opened maximised because the user's saved window was (so the window couldn't be moved). | `SCRIMSHAW_SETTINGS_PATH` override; every UI-test launch uses a throwaway file. The user's Recent list was cleaned of test entries, keeping their own workspaces and window position. |
+| F36 | Collapsed WPF elements aren't in the UI Automation tree, so waiting for the hidden Start button by looking it up failed. | Treat "not found" as "still capturing". |
+
 ### Phase 7 — FR-C13 Preview the selected source
 
 **Build**

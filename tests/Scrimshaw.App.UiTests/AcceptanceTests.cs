@@ -40,7 +40,7 @@ public sealed class AcceptanceTests : IDisposable
         string ws = Path.Combine(runDir, "workspace");
         Workspace.Create(ws).Dispose();
 
-        var psi = new ProcessStartInfo(AppExe.Path) { UseShellExecute = false };
+        var psi = AppExe.StartInfo();
         psi.ArgumentList.Add(ws);
         _app = Application.Launch(psi);
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(20))!;
@@ -68,16 +68,17 @@ public sealed class AcceptanceTests : IDisposable
         Mouse.Position = new System.Drawing.Point(window.BoundingRectangle.Left + 40, window.BoundingRectangle.Top + 40);
 
         // FR-C14: capture should stop by itself when YouTube moves on to the next video.
+        // While capturing, the Start button is collapsed and so absent from the automation tree.
         var clock = Stopwatch.StartNew();
-        AutomationElement start = Find(window, "StartCapture");
-        while (clock.Elapsed.TotalSeconds < maxSeconds && start.IsOffscreen) Thread.Sleep(500);
-        bool stoppedByItself = !start.IsOffscreen;
+        bool Capturing() => window.FindFirstDescendant(cf => cf.ByAutomationId("StartCapture")) is null;
+        while (clock.Elapsed.TotalSeconds < maxSeconds && Capturing()) Thread.Sleep(500);
+        bool stoppedByItself = !Capturing();
         if (!stoppedByItself)
         {
             // Fallback: stop with the global hotkey (FR-C9) while the browser has focus.
             browser.SetForeground();
             Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_S);
-            for (int i = 0; i < 100 && start.IsOffscreen; i++) Thread.Sleep(100);
+            for (int i = 0; i < 100 && Capturing(); i++) Thread.Sleep(100);
         }
         browser.SetForeground();
         Thread.Sleep(300);
@@ -124,7 +125,7 @@ public sealed class AcceptanceTests : IDisposable
     {
         string runDir = Path.Combine(AppExe.RepoRoot(), "TestResults", "ui", "about-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
         Directory.CreateDirectory(runDir);
-        _app = Application.Launch(new ProcessStartInfo(AppExe.Path) { UseShellExecute = false });
+        _app = Application.Launch(AppExe.StartInfo());
         Window window = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(20))!;
         window.SetForeground();
         Screenshot(window, runDir, "main-empty.png");

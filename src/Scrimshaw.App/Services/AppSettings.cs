@@ -39,8 +39,14 @@ public sealed class AppSettingsStore(string path) : IAppSettingsStore
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
-    public static string DefaultPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Scrimshaw", "settings.json");
+    /// <summary>
+    /// <c>%LOCALAPPDATA%\Scrimshaw\settings.json</c>, or the file named in <c>SCRIMSHAW_SETTINGS_PATH</c>
+    /// (UI tests use that so they never touch the user's recent list or window position).
+    /// </summary>
+    public static string DefaultPath { get; } =
+        Environment.GetEnvironmentVariable("SCRIMSHAW_SETTINGS_PATH") is { Length: > 0 } overridePath
+            ? overridePath
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Scrimshaw", "settings.json");
 
     public AppSettings Load()
     {
