@@ -149,6 +149,31 @@ public sealed partial class DesktopCaptureTests
         }
     }
 
+    /// <summary>FR-C14: the TestPlayer renames itself partway through, like YouTube starting the next video.</summary>
+    [Fact]
+    public async Task Capture_stops_when_the_window_title_changes()
+    {
+        string runDir = RunDirectory("title-change");
+        string title = "(1) Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8]; // with a notification-style prefix
+        using Process player = StartPlayer(title, Path.Combine(runDir, "player-log.json"), null, "cut", pages: 3, hold: 3, turn: 0, retitleAfter: 5);
+        WindowTarget target = await FindWindowAsync(title);
+        using Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace"), new WorkspaceSettings { IntervalSeconds = 0.5 });
+        using IFrameSource source = FrameSources.Create(target, includeCursor: false);
+        var session = new CaptureSession(ws, source, _codec, options: new CaptureSessionOptions(
+            () => CaptureTargets.GetWindowTitle(target.Window.Handle), StopOnTitleChange: true));
+
+        var clock = Stopwatch.StartNew();
+        session.Start();
+        CaptureStopReason reason = await session.Completion.WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+        TestContext.Current.TestOutputHelper?.WriteLine($"stopped after {clock.Elapsed.TotalSeconds:0.0} s: {reason} -> '{session.NewTitle}', {ws.Manifest.Current.Frames.Count} frames");
+
+        Assert.Equal(CaptureStopReason.TitleChanged, reason);
+        Assert.EndsWith(" - next video", session.NewTitle, StringComparison.Ordinal);
+        Assert.InRange(clock.Elapsed.TotalSeconds, 4.5, 8); // retitled at ~5 s, confirmed on the second 0.5 s check
+        Assert.Equal(2, ws.Manifest.Current.Frames.Count); // pages 1 and 2 were shown before the retitle
+        if (!player.HasExited) player.Kill();
+    }
+
     [Fact]
     public async Task Closing_the_window_stops_capture_as_target_lost()
     {
@@ -180,7 +205,7 @@ public sealed partial class DesktopCaptureTests
         throw new TimeoutException("no frame arrived");
     }
 
-    private static Process StartPlayer(string title, string log, string? refs, string style, int pages, double hold, double turn)
+    private static Process StartPlayer(string title, string log, string? refs, string style, int pages, double hold, double turn, double retitleAfter = 0)
     {
         string exe = Path.Combine(RepoRoot(), "tools", "Scrimshaw.TestPlayer", "bin", "Debug", "net10.0-windows", "scrimshaw-testplayer.exe");
         if (!File.Exists(exe)) Assert.Skip($"Build the TestPlayer first: {exe} not found.");
@@ -200,6 +225,7 @@ public sealed partial class DesktopCaptureTests
             "--h", PlayerHeight.ToString(CultureInfo.InvariantCulture),
         };
         if (refs is not null) args.AddRange(["--refs", refs]);
+        if (retitleAfter > 0) args.AddRange(["--retitle-after", retitleAfter.ToString(CultureInfo.InvariantCulture)]);
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
         foreach (string a in args) psi.ArgumentList.Add(a);
         return Process.Start(psi)!;

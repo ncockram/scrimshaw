@@ -197,6 +197,46 @@ public sealed class CaptureSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task Stops_when_the_window_title_changes_and_keeps_what_was_saved()
+    {
+        using Workspace ws = NewWorkspace();
+        RawImage p1 = Synthetic.Page(1);
+        string title = "(1) Etude - YouTube";
+        var session = new CaptureSession(ws, new ScriptedSource(p1, p1, p1, p1, p1), _codec, _time,
+            new CaptureSessionOptions(() => title, StopOnTitleChange: true));
+
+        session.Start();
+        await TickAsync(session, 2);
+        title = "(2) Etude - YouTube"; // only the notification count changed
+        await TickAsync(session, 1);
+        title = "Next video - YouTube";
+        await TickAsync(session, 1);
+        Assert.False(session.Completion.IsCompleted); // one sighting isn't enough
+        _time.Advance(Interval);
+        CaptureStopReason reason = await session.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Equal(CaptureStopReason.TitleChanged, reason);
+        Assert.Equal("Next video - YouTube", session.NewTitle);
+        Assert.Single(ws.Manifest.Current.Frames);
+    }
+
+    [Fact]
+    public async Task Title_changes_are_ignored_when_the_option_is_off()
+    {
+        using Workspace ws = NewWorkspace();
+        string title = "A";
+        var session = new CaptureSession(ws, new ScriptedSource(Synthetic.Page(1)), _codec, _time,
+            new CaptureSessionOptions(() => title, StopOnTitleChange: false));
+        session.Start();
+        await TickAsync(session, 1);
+        title = "B";
+        await TickAsync(session, 3);
+        Assert.False(session.Completion.IsCompleted);
+        Assert.Equal(CaptureStopReason.User, await session.StopAsync());
+        Assert.Null(session.NewTitle);
+    }
+
+    [Fact]
     public async Task Start_twice_is_rejected()
     {
         using Workspace ws = NewWorkspace();

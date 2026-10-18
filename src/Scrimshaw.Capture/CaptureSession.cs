@@ -17,6 +17,17 @@ public enum CaptureStopReason
 
     /// <summary>Saving failed, e.g. the disk is full. See <see cref="CaptureSession.Error"/>.</summary>
     Error,
+
+    /// <summary>The window's title changed, e.g. the next video started (FR-C14). See <see cref="CaptureSession.NewTitle"/>.</summary>
+    TitleChanged,
+}
+
+/// <summary>Optional behaviour for a capture session.</summary>
+/// <param name="WindowTitle">Reads the captured window's current title (window sources only).</param>
+/// <param name="StopOnTitleChange">Stop when that title changes (FR-C14).</param>
+public sealed record CaptureSessionOptions(Func<string?>? WindowTitle = null, bool StopOnTitleChange = false)
+{
+    public static readonly CaptureSessionOptions None = new();
 }
 
 /// <summary>Live counters for the capture panel (FR-C6).</summary>
@@ -71,8 +82,10 @@ public sealed class CaptureSession : IAsyncDisposable
     private Task? _writer;
     private FrameRecord? _lastWritten; // writer thread only
     private int _started;
+    private readonly CaptureSessionOptions _options;
+    private TitleWatcher? _titleWatcher;
 
-    public CaptureSession(Workspace workspace, IFrameSource source, IImageCodec codec, TimeProvider? time = null)
+    public CaptureSession(Workspace workspace, IFrameSource source, IImageCodec codec, TimeProvider? time = null, CaptureSessionOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(source);
@@ -82,6 +95,7 @@ public sealed class CaptureSession : IAsyncDisposable
         _codec = codec;
         _time = time ?? TimeProvider.System;
         _settings = workspace.Settings;
+        _options = options ?? CaptureSessionOptions.None;
     }
 
     /// <summary>Raised after every tick, on the capture thread.</summary>
@@ -104,11 +118,16 @@ public sealed class CaptureSession : IAsyncDisposable
     /// <summary>Set when the session stopped because of <see cref="CaptureStopReason.Error"/>.</summary>
     public Exception? Error { get; private set; }
 
+    /// <summary>The window's new title, when the session stopped because of <see cref="CaptureStopReason.TitleChanged"/>.</summary>
+    public string? NewTitle => _titleWatcher?.ChangedTo;
+
     public void Start()
     {
         if (Interlocked.Exchange(ref _started, 1) != 0) throw new InvalidOperationException("Capture has already started.");
         var detector = new ChangeDetector(_settings.Detection);
         SeedFromLastFrame(detector);
+        if (_options is { StopOnTitleChange: true, WindowTitle: { } probe })
+            _titleWatcher = new TitleWatcher(probe()); // the title when capture starts is the reference
         _writer = Task.Run(WriteLoopAsync);
         _loop = Task.Run(() => CaptureLoopAsync(detector, _stop.Token));
         _ = FinishAsync();
@@ -144,6 +163,12 @@ public sealed class CaptureSession : IAsyncDisposable
                 if (_source.IsClosed)
                 {
                     RequestStop(CaptureStopReason.TargetLost);
+                    break;
+                }
+                if (_titleWatcher is not null && _titleWatcher.Observe(_options.WindowTitle!()))
+                {
+                    // Stop before grabbing: this frame already belongs to whatever replaced the video.
+                    RequestStop(CaptureStopReason.TitleChanged);
                     break;
                 }
 

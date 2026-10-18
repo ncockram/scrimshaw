@@ -67,17 +67,26 @@ public sealed class AcceptanceTests : IDisposable
         Keyboard.Type("k");
         Mouse.Position = new System.Drawing.Point(window.BoundingRectangle.Left + 40, window.BoundingRectangle.Top + 40);
 
+        // FR-C14: capture should stop by itself when YouTube moves on to the next video.
         var clock = Stopwatch.StartNew();
-        string startTitle = browser.Name;
-        while (clock.Elapsed.TotalSeconds < maxSeconds && browser.Name == startTitle) Thread.Sleep(500);
-
-        // Stop with the global hotkey (FR-C9) while the browser has focus, then pause whatever autoplay started.
+        AutomationElement start = Find(window, "StartCapture");
+        while (clock.Elapsed.TotalSeconds < maxSeconds && start.IsOffscreen) Thread.Sleep(500);
+        bool stoppedByItself = !start.IsOffscreen;
+        if (!stoppedByItself)
+        {
+            // Fallback: stop with the global hotkey (FR-C9) while the browser has focus.
+            browser.SetForeground();
+            Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_S);
+            for (int i = 0; i < 100 && start.IsOffscreen; i++) Thread.Sleep(100);
+        }
         browser.SetForeground();
-        Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_S);
         Thread.Sleep(300);
-        Keyboard.Type("k");
+        Keyboard.Type("k"); // pause whatever autoplay started
         window.SetForeground();
-        for (int i = 0; i < 100 && Find(window, "StartCapture").IsOffscreen; i++) Thread.Sleep(100);
+        string status = Find(window, "StatusMessage").Name;
+        File.WriteAllText(Path.Combine(runDir, "stop.txt"), $"stopped by itself: {stoppedByItself} after {clock.Elapsed.TotalSeconds:0} s{Environment.NewLine}{status}");
+        Assert.True(stoppedByItself, "capture should have stopped when the title changed");
+        Assert.Contains("title changed", status, StringComparison.Ordinal);
         string saved = Find(window, "StatSaved").Name;
         Screenshot(window, runDir, "2-stopped.png");
         Assert.True(int.Parse(saved, CultureInfo.CurrentCulture) >= 2, $"only {saved} pages saved");

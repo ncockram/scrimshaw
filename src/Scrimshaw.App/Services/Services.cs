@@ -96,13 +96,21 @@ public sealed class CaptureService(IImageCodec codec) : ICaptureService
 {
     public IImageCodec Codec { get; } = codec;
 
+    /// <summary>Window sources can stop when their title changes (FR-C14); other sources have no title.</summary>
+    public static CaptureSessionOptions OptionsFor(Workspace workspace, CaptureTarget target, Func<string?>? titleProbe = null)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        if (target is not WindowTarget w) return CaptureSessionOptions.None;
+        return new CaptureSessionOptions(titleProbe ?? (() => CaptureTargets.GetWindowTitle(w.Window.Handle)), workspace.Settings.StopOnTitleChange);
+    }
+
     public CaptureSession Start(Workspace workspace, CaptureTarget target)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         IFrameSource source = FrameSources.Create(target, workspace.Settings.IncludeCursor);
         try
         {
-            var session = new CaptureSession(workspace, source, Codec);
+            var session = new CaptureSession(workspace, source, Codec, options: OptionsFor(workspace, target));
             session.Completion.ContinueWith(_ => source.Dispose(), TaskScheduler.Default);
             session.Start();
             return session;

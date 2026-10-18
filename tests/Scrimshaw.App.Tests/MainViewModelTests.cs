@@ -65,11 +65,14 @@ internal sealed class FakeCapture(FakeTimeProvider time, Func<ScriptedSource> so
     public ScriptedSource? LastSource { get; private set; }
     public CaptureTarget? LastTarget { get; private set; }
 
+    /// <summary>What the captured window's title currently reads (FR-C14 tests).</summary>
+    public string? WindowTitle { get; set; } = "Video - YouTube";
+
     public CaptureSession Start(Workspace workspace, CaptureTarget target)
     {
         LastTarget = target;
         LastSource = source();
-        Last = new CaptureSession(workspace, LastSource, Codec, time);
+        Last = new CaptureSession(workspace, LastSource, Codec, time, CaptureService.OptionsFor(workspace, target, () => WindowTitle));
         Last.Start();
         return Last;
     }
@@ -247,6 +250,42 @@ public sealed class MainViewModelTests : IAsyncDisposable
         CreateWorkspace();
         Assert.False(_vm.HasWorkspace);
         Assert.Single(_dialogs.Errors);
+    }
+
+    [Fact]
+    public void Title_option_applies_to_windows_only_and_is_saved()
+    {
+        CreateWorkspace();
+        Assert.True(_vm.StopOnTitleChange); // on by default (FR-C14)
+        _vm.SelectedTarget = _vm.Targets[0]; // monitor
+        Assert.False(_vm.CanStopOnTitleChange);
+        _vm.SelectedTarget = _vm.Targets[1]; // window
+        Assert.True(_vm.CanStopOnTitleChange);
+
+        _vm.StopOnTitleChange = false;
+        _vm.StartCaptureCommand.Execute(null);
+        Assert.False(_vm.CanStopOnTitleChange); // locked while capturing
+        Assert.False(_vm.Workspace!.Settings.StopOnTitleChange);
+    }
+
+    [Fact]
+    public async Task Capture_stops_by_itself_when_the_title_changes()
+    {
+        CreateWorkspace();
+        _vm.SelectedTarget = _vm.Targets[1];
+        _capture.WindowTitle = "(3) Etude No. 45 - YouTube";
+        _vm.StartCaptureCommand.Execute(null);
+        await TickAsync(2);
+
+        _capture.WindowTitle = "(3) Next video - YouTube";
+        await TickAsync(1); // first sighting: not yet
+        Assert.True(_vm.IsCapturing);
+        _time.Advance(TimeSpan.FromSeconds(1)); // second sighting: stop
+        await _capture.Last!.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await UntilAsync(() => !_vm.IsCapturing);
+
+        Assert.Equal(CaptureStopReason.TitleChanged, await _capture.Last.Completion);
+        Assert.Contains("title changed to '(3) Next video - YouTube'", _vm.StatusMessage, StringComparison.Ordinal);
     }
 
     [Fact]

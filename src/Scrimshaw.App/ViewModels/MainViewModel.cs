@@ -83,6 +83,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand))]
+    [NotifyPropertyChangedFor(nameof(CanStopOnTitleChange))]
     public partial TargetOption? SelectedTarget { get; set; }
 
     [ObservableProperty]
@@ -104,8 +105,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty]
     public partial bool IncludeCursor { get; set; }
 
+    /// <summary>FR-C14: stop when the captured window's title changes.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat))]
+    public partial bool StopOnTitleChange { get; set; }
+
+    /// <summary>The title option only applies to windows, and can't change mid-capture.</summary>
+    public bool CanStopOnTitleChange => CanEditSettings && SelectedTarget?.Target is WindowTarget;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat), nameof(CanStopOnTitleChange))]
     [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand))]
     public partial bool IsCapturing { get; private set; }
 
@@ -385,11 +393,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         IsJpeg = s.ImageFormat == ImageFormat.Jpeg;
         JpegQuality = s.JpegQuality;
         IncludeCursor = s.IncludeCursor;
+        StopOnTitleChange = s.StopOnTitleChange;
         Stats = CaptureStats.Empty;
         UpdateFrameInfo();
         OnPropertyChanged(nameof(HasWorkspace));
         OnPropertyChanged(nameof(CanEditSettings));
         OnPropertyChanged(nameof(CanChangeFormat));
+        OnPropertyChanged(nameof(CanStopOnTitleChange));
         StartCaptureCommand.NotifyCanExecuteChanged();
         if (s.Target is not null)
         {
@@ -405,6 +415,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             IntervalSeconds = interval,
             Target = SelectedTarget?.Target.ToDescriptor() ?? s.Target,
             IncludeCursor = IncludeCursor,
+            StopOnTitleChange = StopOnTitleChange,
             Detection = s.Detection with { AreaThreshold = ThresholdPercent / 100 },
             ImageFormat = CanChangeFormat ? (IsJpeg ? ImageFormat.Jpeg : ImageFormat.Png) : s.ImageFormat,
             JpegQuality = Math.Clamp(JpegQuality, 1, 100),
@@ -455,6 +466,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 CaptureStopReason.TargetLost => string.Create(CultureInfo.CurrentCulture,
                     $"The capture target went away (window closed or monitor disconnected). Capture stopped; {added} new frames kept."),
                 CaptureStopReason.Error => $"Capture stopped because frames couldn't be saved: {session.Error?.Message}",
+                CaptureStopReason.TitleChanged => string.Create(CultureInfo.CurrentCulture,
+                    $"Capture stopped automatically: the window's title changed to '{session.NewTitle}'. {added} new frames saved."),
                 _ => string.Create(CultureInfo.CurrentCulture, $"Capture stopped. {added} new frames saved. Open the Review tab to box the music."),
             };
             _session = null;

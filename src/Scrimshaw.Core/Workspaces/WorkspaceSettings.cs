@@ -39,6 +39,9 @@ public sealed record WorkspaceSettings
     public CaptureTargetDescriptor? Target { get; set; }
     public double IntervalSeconds { get; set; } = 1.0;
     public bool IncludeCursor { get; set; }
+
+    /// <summary>Stop capturing a window when its title changes, e.g. the next video starts (FR-C14).</summary>
+    public bool StopOnTitleChange { get; set; } = true;
     public ChangeDetectionSettings Detection { get; set; } = new();
     public ImageFormat ImageFormat { get; set; } = ImageFormat.Png;
     public int JpegQuality { get; set; } = 90;

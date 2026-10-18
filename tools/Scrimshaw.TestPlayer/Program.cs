@@ -4,7 +4,7 @@
 //
 //   scrimshaw-testplayer --log run.json [--refs dir] [--style cut|half|fade|slide|mixed] [--pages 5]
 //                        [--hold 3] [--turn 0.6] [--seed 1] [--x 100 --y 100] [--w 1280 --h 720]
-//                        [--title "Scrimshaw TestPlayer"]
+//                        [--title "Scrimshaw TestPlayer"] [--retitle-after seconds]
 // Position and size are physical pixels. The window closes itself after the last page.
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -19,7 +19,7 @@ using System.Windows.Media.Imaging;
 namespace Scrimshaw.TestPlayer;
 
 internal sealed record PlayerOptions(
-    string Log, string? Refs, string Style, int Pages, double Hold, double Turn, int Seed, int X, int Y, int W, int H, string Title)
+    string Log, string? Refs, string Style, int Pages, double Hold, double Turn, int Seed, int X, int Y, int W, int H, string Title, double RetitleAfter)
 {
     public static PlayerOptions Parse(string[] args)
     {
@@ -33,7 +33,7 @@ internal sealed record PlayerOptions(
         return new PlayerOptions(
             Get("log") ?? "testplayer-log.json", Get("refs"), Get("style") ?? "mixed", Int("pages", 5),
             Dbl("hold", 3), Dbl("turn", 0.6), Int("seed", 1), Int("x", 100), Int("y", 100), Int("w", 1280), Int("h", 720),
-            Get("title") ?? "Scrimshaw TestPlayer");
+            Get("title") ?? "Scrimshaw TestPlayer", Dbl("retitle-after", 0));
     }
 }
 
@@ -83,6 +83,9 @@ internal static partial class Program
             PlaceWindow(window, o);
             await NextFrameAsync();
             window.Title = o.Title;
+            if (o.RetitleAfter > 0)
+                _ = Task.Delay(TimeSpan.FromSeconds(o.RetitleAfter)).ContinueWith(
+                    _ => window.Dispatcher.Invoke(() => window.Title = o.Title + " - next video"), TaskScheduler.Default);
             await PlayAsync(o, window, back, front);
         };
         return app.Run(window);

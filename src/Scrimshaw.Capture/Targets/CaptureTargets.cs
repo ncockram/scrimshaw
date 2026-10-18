@@ -153,6 +153,9 @@ public static unsafe class CaptureTargets
 
     public static bool IsWindowAlive(IntPtr hwnd) => NativeMethods.IsWindow(hwnd);
 
+    /// <summary>The window's current title, or null if the window no longer exists (FR-C14).</summary>
+    public static string? GetWindowTitle(IntPtr hwnd) => NativeMethods.IsWindow(hwnd) ? NativeMethods.ReadWindowText(hwnd) : null;
+
     private static string ProcessName(int pid)
     {
         try

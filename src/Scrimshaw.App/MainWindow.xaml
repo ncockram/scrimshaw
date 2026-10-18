@@ -108,6 +108,10 @@
 
                                 <CheckBox Content="Include the mouse pointer" Margin="0,12,0,0" IsChecked="{Binding IncludeCursor}"
                                           IsEnabled="{Binding CanEditSettings}" AutomationProperties.AutomationId="IncludeCursor" />
+                    <CheckBox Margin="0,6,0,0" IsChecked="{Binding StopOnTitleChange}" IsEnabled="{Binding CanStopOnTitleChange}"
+                              AutomationProperties.AutomationId="StopOnTitleChange">
+                        <TextBlock TextWrapping="Wrap" Text="Stop when the window's title changes (e.g. the next video starts)" />
+                    </CheckBox>
 
                                 <Grid Margin="0,16,0,0">
                                     <Button Content="Start capture" FontWeight="SemiBold" Padding="10,8"
