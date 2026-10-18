@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **v1.0 delivered** (2026-10-17). All phases complete; every checkpoint passed. |
+| Status | **v1.0 delivered** (2026-10-17). **v1.1 planned** (§14): FR-C14 → FR-C13 → FR-C12. |
 | Date | 2026-10-16 |
 | Implements | [requirements.md](requirements.md) v0.4 |
 
@@ -490,7 +490,6 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 
 | Idea | Size | Notes |
 |---|---|---|
-| **FR-C12 Region of interest** (deferred Could) | Medium | Capture or compare only part of the window: handles videos with a moving element, a performer inset, or permanent player chrome |
 | **FR-P11 Print clean-up** (deferred Could) | Small | Grayscale and whiten off-white backgrounds; saves ink, sharper prints |
 | **FR-P12 Alignment** (deferred Could) | Small | Left, centre or right crops in the PDF |
 | Automatic music-area detection | Medium | Propose a box per page around the staves, for the user to accept or adjust |
@@ -498,6 +497,7 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 | Video-file input | Medium | Process a downloaded video file instead of the live screen: faster than real time, no screen time needed |
 | Combine workspaces | Small | One PDF from several videos (e.g. a suite's movements) |
 | Configurable hotkey | Small | For when Ctrl+Alt+S clashes with another app |
+| Capture timer | Small | Stop after a set time (the original R2, set aside for FR-C14 at review) |
 | Installer or winget package; ARM64 build | Small–Medium | Easier installation and updates; NFR-1's Could |
 | Optical music recognition / MusicXML | Very large | Out of scope for v1 (requirements §2); a different kind of project |
 
@@ -507,3 +507,108 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 - **Before building:** do one short refinement pass for each batch (requirements §10, steps 2–3), as happened after the brainstorm. Batching two or three related requests into one phase is cheaper than one at a time, because they share a design review, a desktop session and a checkpoint.
 - **Best moment:** after a few weeks of real use. Requests that come from scoring actual videos (missed pages, awkward boxing, print results) are better informed than ones imagined up front, and the real recordings can join `samples/` as regression tests.
 - **Bug fixes** don't need the full process: describe the problem (ideally with the workspace, or a log from `%LOCALAPPDATA%\Scrimshaw\logs`), and the fix gets a regression test.
+
+## 14. v1.1 plan: FR-C14 → FR-C13 → FR-C12
+
+Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a phase with the same rhythm as v1: headless work first, then a desktop session arranged with you, then a checkpoint with you. **Where requirements §11 still has open questions (R2, R3), this plan assumes the suggested answers.** If you choose differently, the affected steps change before that phase starts.
+
+| Phase | Feature | Depends on |
+|---|---|---|
+| 6 | FR-C14 Stop when the window's title changes | — |
+| 7 | FR-C13 Preview the selected source | — |
+| 8 | FR-C12 Region of interest | Phase 7 (the region is drawn on the preview) |
+| 9 | v1.1 release: docs, publish, acceptance | 6–8 |
+
+### Phase 6 — FR-C14 Stop when the window's title changes
+
+**Build**
+- **Core: `TitleWatcher`** (pure logic). `Normalize` strips a leading "(number) " notification count and trims the rest. It tracks the start title and reports a change only after the new title has been seen on **two consecutive checks** (R2, questions 2–4).
+- **Capture:** `CaptureTargets.GetWindowTitle(hwnd)`. `CaptureSession` takes optional `CaptureSessionOptions` (a title probe and an on/off switch). Each tick it checks the title and stops with a new **`CaptureStopReason.TitleChanged`**, recording the new title. A missing window is still handled by the existing target-lost path.
+- **Settings:** `WorkspaceSettings.StopOnTitleChange` (default **on**; `set` accessor per F27, so older workspaces get the default).
+- **App:** a checkbox "Stop when the window's title changes (e.g. the next video starts)", enabled only for window sources. `CaptureService` passes the title probe for window targets. The status message reads "Capture stopped automatically: the window's title changed to '…'. N new frames saved."
+- **TestPlayer:** `--retitle-after <seconds>` changes its own title partway through, to stand in for autoplay.
+
+**Verify**
+- Unit tests:
+  - `TitleWatcher`: the "(86)" prefix changing alone is ignored, a one-check flicker is ignored, a real change is confirmed on the second check, and blank or null titles are handled
+  - session tests with a fake title probe: stops with `TitleChanged`; doesn't stop when switched off; frames already saved are kept
+  - view-model tests: the checkbox is enabled only for windows, the setting persists, and the message wording is right
+- Desktop (coordinated): a TestPlayer run with `--retitle-after` stops by itself. The real-video acceptance test (V1) now expects capture to **stop on its own**, with no hotkey, keeping the hotkey only as a fallback.
+
+**Done when** all the above pass. **→ Checkpoint: you try a real video unattended.**
+
+### Phase 7 — FR-C13 Preview the selected source
+
+**Build**
+- **App: `IPreviewService`**, which wraps `FrameSources.Create` for the selected target and grabs a frame about once a second on a background timer. It hands frames to the view-model as frozen, downscaled bitmaps (at most 1600 px wide) to keep memory low.
+- **View-model:** the frame area has two modes, **Preview** and **Latest frame** (FR-C13):
+  - the preview starts when a source is selected, a workspace is open and capture isn't running
+  - starting capture stops the preview first, so there are never two capture sessions on the same window
+  - after capture stops, the area shows the latest saved frame until a source is selected again
+- **Display:** a "Preview: not saved" label and the source's size. If no frame arrives for 2 seconds, or the window is minimised, it shows "Nothing to preview: is the window minimised?".
+- **Lifecycle:** the preview stops on workspace switch, app close and target-list refresh.
+
+**Verify**
+- View-model tests with a fake preview service:
+  - mode changes (select → preview; start → latest frame; stop → latest frame; select again → preview)
+  - the preview stops before capture starts
+  - no frames are added to the workspace while previewing
+  - the minimised message
+  - disposal on workspace switch
+- Desktop (coordinated):
+  - FlaUI selects the TestPlayer window: the preview appears with its label and size, and a screenshot is reviewed
+  - starting and stopping capture switches modes, and the workspace has no frames from previewing
+  - a minimised TestPlayer shows the message
+
+**Done when** all the above pass. **→ Checkpoint: you try picking sources with the preview.**
+
+### Phase 8 — FR-C12 Region of interest
+
+**Build** (assuming the R3 suggestions):
+- **Core:**
+  - `CaptureRegion`: a rectangle as fractions of the source's width and height, with conversion to frame pixels and image cropping
+  - `WorkspaceSettings.Region` (null means the whole source) and `SaveRegionOnly` (default off)
+- **Capture:** `CaptureSession` crops each capture to the region **for change detection**. When `SaveRegionOnly` is on, it also saves the crop; otherwise it saves the full frame. FR-D8 (keep longest version) and the frame hash work on what's actually saved.
+- **App:** on the preview,
+  - **Set area:** drag a rectangle, then adjust or redraw it
+  - **Clear area**
+  - a "Save only this area" checkbox
+  - an outline of the area on the preview and on the latest saved frame
+
+  The area can change only while capture is stopped (R3, question 5).
+- **Test material:**
+  - TestPlayer and Harness `synth` get a `--distraction` option: a moving element (a playback bar and a ticking clock) outside the score area, like a performer inset or progress bar
+  - Harness `replay` gets `--region x,y,w,h`
+
+**Verify**
+- Unit tests:
+  - region maths (fractions → pixels on several frame sizes; clamping; tiny or invalid regions refused)
+  - detector input crops: changes outside the region are ignored, changes inside are detected, and a half-page turn inside is still caught
+  - `SaveRegionOnly` saves the cropped image, with matching width and height in the manifest
+- Replay:
+  - a new labelled synthetic `distraction` sample **fails without a region** (every tick becomes a page) and **passes with one**
+  - every existing sample still passes with no region set (regression)
+- Desktop (coordinated):
+  - TestPlayer with `--distraction`: without a region it captures extra frames; with a region drawn through the UI (FlaUI drag on the preview) it captures each page once
+  - a screenshot of the outline is reviewed
+
+**Done when** all the above pass. **→ Checkpoint: you try a video with something moving outside the score**, if you have one (otherwise the TestPlayer demonstration).
+
+### Phase 9 — v1.1 release
+
+- **Docs:**
+  - requirements §9 rows for FR-C12 to FR-C14, and the §11 statuses set to **Done**
+  - user guide: the preview, auto-stop and "Mark the music area" sections, plus troubleshooting
+  - README feature list; About text; `CLAUDE.md` if anything new is learnt
+- **Release:** version 1.1.0 and a single-file publish. The full UI and desktop suites run against the published exe (coordinated), including real-video acceptance with V1 stopping on its own.
+- **→ Final checkpoint for v1.1.**
+
+### v1.1 risks
+
+| # | Risk | Mitigation |
+|---|---|---|
+| R9 | A browser changes its title mid-video for reasons other than a new video (notification counts, playing indicators) and stops capture early | Normalise the "(n)" prefix; require two consecutive checks; the setting can be switched off; the status message says exactly why capture stopped |
+| R10 | Preview and capture both open a capture session on the same window | The preview always stops before capture starts (tested) |
+| R11 | Preview costs CPU or memory while idle | 1 grab per second, downscaled bitmaps, stopped whenever capture runs or the app isn't showing the Capture tab |
+| R12 | A region drawn on one resolution doesn't match later frames | Stored as fractions; tested across frame sizes |
+| R13 | A region that's too tight misses part of a page turn | The outline is visible on the preview and the latest frame; the Phase 8 replay tests include half-page turns inside the region |

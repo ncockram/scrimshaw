@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | **v1.0: delivered.** Every Must and Should requirement is built and verified (§9). |
-| Date | 2026-10-17 (v0.4 added FR-D8 after the Phase 2 real-video tests) |
+| Status | **v1.0 delivered** (§9). **v1.1 in refinement:** FR-C14, FR-C13, FR-C12 (§11). |
+| Date | 2026-10-18 (v1.1 requests refined; v0.4 added FR-D8 after the Phase 2 real-video tests) |
 | Source | `brainstorm.md` (initial brainstorming conversation); review comments on v0.1 and v0.2 |
 
 ## 1. Purpose
@@ -51,7 +51,7 @@ Scrimshaw is a Windows desktop app that:
 
 ## 4. Functional requirements
 
-Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = could have (later).
+Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = could have (later). **M (v1.1)** = must have for the v1.1 release.
 
 ### 4.1 Workspace
 
@@ -78,7 +78,9 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | FR-C9 | A global hotkey starts and stops capture, so the user doesn't have to leave the video. | S |
 | FR-C10 | If the target window is closed or a monitor is disconnected during capture, capture stops cleanly, the frames already captured are kept, and the user is told. | M |
 | FR-C11 | Starting capture again in a workspace that already has frames (e.g. resuming an interrupted capture of the same video) adds to them; numbering continues from the last frame. | S |
-| FR-C12 | The user can limit capture (or just the dedup comparison) to a sub-region of the target. This handles video player controls and progress bars that change while the content doesn't. *Deferred to a later version.* | C |
+| FR-C12 | **Region of interest.** The user can limit change detection (and optionally what is saved) to part of the capture source, so changes elsewhere (player controls, a progress bar, a performer inset) don't count as new pages. *Promoted from C to v1.1; details pending the questions in §11 R3.* | M (v1.1) |
+| FR-C13 | **Preview the selected source.** While a source is selected and capture isn't running, the frame area shows a live preview of it, refreshed about once a second and labelled "Preview: not saved", with the source's size (e.g. 1920×1080). Previewing saves nothing and doesn't affect change detection. During capture and straight after stopping, the area shows the latest saved frame as before; selecting a source again returns to the preview. Needs an open workspace (as the capture panel does). A source that can't be previewed (e.g. a minimised window) shows "Nothing to preview: is the window minimised?". On Windows 10 the capture border appears while previewing (accepted, as A6). | M (v1.1) |
+| FR-C14 | **Stop when the window's title changes.** For window sources, capture can stop automatically when the window's title changes, as when YouTube moves on to the next video. It behaves like pressing Stop, and the status message says why. *Details pending the questions in §11 R2.* | M (v1.1) |
 
 ### 4.3 De-duplication
 
@@ -150,7 +152,7 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 - **A4 — Pause gaps.** Video playback is controlled by the user outside the app. Scrimshaw doesn't detect when a video pauses or ends.
 - **A5 — Protected content.** DRM-protected video (e.g. some streaming services) may capture as black frames. That is a platform limit, not a defect. Normal YouTube playback is not affected.
 - **A6 — Capture border.** On Windows 10, the yellow border Windows draws around captured content can't be turned off. This is accepted. The border doesn't appear in the captured frames.
-- **A7 — Player chrome.** In v1, the user is expected to keep the mouse off the video, or use theatre or fullscreen mode, so YouTube's controls stay hidden. The region-of-interest feature (FR-C12) is deferred.
+- **A7 — Player chrome.** In v1, the user is expected to keep the mouse off the video, or use theatre or fullscreen mode, so YouTube's controls stay hidden. v1.1 adds a region of interest (FR-C12) for videos where that isn't enough.
 - **A8 — Source resolution.** Print quality depends on the video's resolution and the size of the player. A 1080p fullscreen capture of a full page gives roughly 200 DPI on Letter or A4, which prints acceptably. Smaller players give worse results.
 
 ## 7. Decisions log
@@ -170,6 +172,9 @@ Priority: **M** = must have (v1), **S** = should have (v1 if feasible), **C** = 
 | — | Crop alignment (v0.2 review note) | **Left-aligned.** Other alignments later. → FR-P4, FR-P12 |
 | — | Constraints and assumptions | **All confirmed.** → §6 |
 | — | Player controls on saved pages (Phase 2 finding) | **Keep the version shown longest.** → FR-D8 |
+| R1 | Preview the selected capture source (2026-10-18) | **All suggested answers accepted.** → FR-C13 (v1.1) |
+| R2 | Capture timer (2026-10-18) | **Replaced by auto-stop on title change**, judged a better first step. The timer stays on the ideas list (plan §13). → FR-C14 (v1.1) |
+| 2 (revisited) | Region of interest | **Promoted to v1.1**, to be built after FR-C14 and FR-C13. → FR-C12 |
 
 ## 8. Open questions
 
@@ -190,7 +195,8 @@ Every **Must** and **Should** requirement is delivered. The **Could** items are 
 | FR-C9 Global hotkey | Done (Should) | Real-video acceptance stops with Ctrl+Alt+S |
 | FR-C10 Target lost | Done | Unit and desktop tests |
 | FR-C11 Resume | Done (Should) | Capture-session test |
-| FR-C12 Region of interest | **Deferred (Could)** | — |
+| FR-C12 Region of interest | **Planned for v1.1** (promoted from Could) | — |
+| FR-C13 Preview, FR-C14 Stop on title change | **Planned for v1.1** | — |
 | FR-D1–D8 | Done | Unit tests; replay of 5 synthetic and 4 real labelled recordings, all passing; desktop tests per turn style |
 | FR-A1–A4, A6, A10 | Done | Editor and view-model tests; UI tests with the real mouse |
 | FR-A5, A7, A8, A9, A11 | Done (Should) | Same; undo goes beyond "within a frame" (one history, and "apply to following" undoes in one step) |
@@ -221,46 +227,65 @@ New feature requests go through the same steps as v1.0:
 
 Status key: **Recorded** (written down, not yet reviewed) → **Refined** (scope agreed; requirement ID and priority assigned in §4) → **Planned** → **Done**.
 
-Other candidates already on file are the deferred Could items: FR-C12 region of interest, FR-P11 print clean-up, FR-P12 alignment, and ARM64. The implementation plan (§13) lists further ideas.
+Other candidates already on file are the deferred Could items: FR-P11 print clean-up, FR-P12 alignment, and ARM64. A capture timer (the original R2) is also on the ideas list. The implementation plan (§13) lists further ideas.
 
-### R1. Preview the selected capture source
-
-| | |
-|---|---|
-| Status | **Recorded** 2026-10-17 |
-| Area | Capture (would become FR-C13) |
-
-**Request.** When a capture source is selected, show a preview of it so the user can check it's the right one before starting capture. The preview would appear in the "Latest saved frame" area. Previewing doesn't record anything: no frames are saved and change detection isn't affected.
-
-**Why.** Picking the wrong source is easy: several browser windows can have similar titles, and "whole desktop" and a single monitor look alike in the list. Today the mistake only shows once frames start arriving.
-
-**Questions for review** (with a suggestion for each):
-
-1. *Live or snapshot?* Should the preview keep updating, or show one picture taken when the source is chosen? **Suggest:** refresh about once a second while a source is selected and capture isn't running, so starting the video shows up.
-2. *What does the area show when the workspace already has frames?* **Suggest:** the preview, with a clear "Preview: not saved" label, whenever capture isn't running. During capture and straight after stopping, the latest saved frame as now. Re-selecting a source returns to the preview.
-3. *Workspace required?* The capture panel is currently disabled until a workspace is open. **Suggest:** keep that; the preview needs no workspace technically, but it keeps the flow simple.
-4. *Show the source's size?* **Suggest:** yes, e.g. "1920×1080", which also helps judge print quality (A8).
-5. *Windows 10 capture border.* Previewing uses the same capture API, so on Windows 10 the yellow border would appear while previewing. **Suggest:** acceptable, as for capture (A6).
-6. *Sources that can't be previewed* (e.g. a minimised window, which captures nothing). **Suggest:** show "Nothing to preview: is the window minimised?" instead of a blank area.
-
-### R2. Capture timer for unattended use
+### R1. Preview the selected capture source → FR-C13
 
 | | |
 |---|---|
-| Status | **Recorded** 2026-10-17 |
-| Area | Capture (would become FR-C14) |
+| Status | **Refined** 2026-10-18 (all suggested answers accepted); planned for v1.1 |
+| Requirement | FR-C13 (§4.2) |
 
-**Request.** The user can enter a capture time. The timer counts down while capture is running and pauses when capture is stopped, keeping the time left. When it reaches zero, capture stops automatically, exactly as if the user had pressed Stop.
+The original request, why it was wanted, and the questions with their accepted answers are kept below for reference.
 
-**Why.** It allows unattended capture: enter the video's length, start, play, and walk away. Capture ends on its own instead of recording the end screen and whatever autoplays next.
+**Request.** When a capture source is selected, show a preview of it so the user can check it's the right one before starting capture, in the "Latest saved frame" area, without recording anything.
+
+**Accepted answers:**
+1. It refreshes about once a second while a source is selected and capture isn't running.
+2. It's shown with a "Preview: not saved" label whenever capture isn't running. During capture and straight after stopping, the latest saved frame is shown; selecting a source again returns to the preview.
+3. A workspace is still required.
+4. The source's size is shown.
+5. The Windows 10 capture border while previewing is acceptable.
+6. A source that can't be previewed shows "Nothing to preview: is the window minimised?".
+
+### R2. Stop capture when the window's title changes → FR-C14
+
+| | |
+|---|---|
+| Status | **Refined, with questions** 2026-10-18; planned for v1.1 |
+| Requirement | FR-C14 (§4.2) |
+| Replaces | The capture-timer request (recorded 2026-10-17, superseded at review) |
+
+**Request.** For window sources, stop capture automatically when the window's title changes, as when YouTube autoplays the next video, so unattended capture ends with the video.
+
+**Why.** Unattended capture without entering a time. Phase 2 showed the title change is a reliable end-of-video signal: the Harness `record` command stopped on it for all three test videos.
 
 **Questions for review** (with a suggestion for each):
 
-1. *Format.* **Suggest:** minutes and seconds (`m:ss`, e.g. `2:15`), also accepting hours (`h:mm:ss`) and plain minutes (`3` = 3 minutes).
-2. *Optional?* **Suggest:** off by default (blank means no timer), so today's behaviour is unchanged.
-3. *After it reaches zero,* what does the next Start do? **Suggest:** the timer resets to the entered time. A **Reset** button restores the full time after a partial run.
-4. *Saved where?* **Suggest:** per workspace, since each workspace is one video; the time is remembered with the other capture settings.
-5. *Other stops* (Stop button, Ctrl+Alt+S, target closed, disk error): **suggest** they all pause the timer the same way.
-6. *Display.* **Suggest:** the time left shown large in the capture panel ("Stops in 1:42") and in the status bar, plus a status message when the timer ends capture.
-7. *Changing the time while paused or capturing?* **Suggest:** allowed while stopped (it replaces the time left); locked while capturing.
-8. *A related option to consider:* also stop automatically when the captured window's **title changes**, which is what happens when YouTube autoplays the next video. The Harness `record` command already does this, and it needs no time entered. **Suggest:** consider adding it as a separate checkbox, alongside the timer or instead of it.
+1. *On or off by default?* **Suggest:** **on** for window sources, saved per workspace, with a checkbox to turn it off. It matches the main scenario, and the status message makes any stop obvious. (It doesn't apply to monitor or whole-desktop sources, which have no title, so the checkbox is disabled for them.)
+2. *What counts as a change?* YouTube puts a notification count in front of the title (e.g. "(86) Cinema Paradiso…"), and it can change mid-video. **Suggest:** ignore a leading "(number) " and surrounding spaces, and compare the rest.
+3. *Brief title flickers.* **Suggest:** the new title must be seen on two checks in a row (about 2 seconds at the default interval) before capture stops, so a momentary change doesn't end it.
+4. *Which title is the reference?* **Suggest:** the title when capture starts. After an automatic stop, starting again follows the new title (e.g. to capture the next video too).
+5. *Status message.* **Suggest:** "Capture stopped automatically: the window's title changed to '…'. N new frames saved."
+
+Note: YouTube's end screen and "Up next" countdown appear *before* the title changes, so a frame of them may still be saved, as in the Phase 5 acceptance run. Deleting it takes one Ctrl+D in review. Removing it automatically isn't part of this request.
+
+### R3. Region of interest → FR-C12
+
+| | |
+|---|---|
+| Status | **Refined, with questions** 2026-10-18; planned for v1.1 (after FR-C14 and FR-C13) |
+| Requirement | FR-C12 (§4.2), promoted from Could |
+
+**Request.** Let the user mark the part of the source that matters (the score), so changes elsewhere don't create extra frames.
+
+**Why.** It handles videos v1 can't: a performer's video inset, a moving playback bar, or player chrome that stays visible. Without it, every capture in such a video counts as a new page (Risk R3; assumption A7).
+
+**Questions for review** (with a suggestion for each):
+
+1. *What does the region control?* **(a)** Only change detection: frames are still saved in full. **(b)** Also what's saved: frames are cropped to the region. **Suggest:** (a) by default, plus a checkbox "Save only this area" for (b). With (b) on, frames are smaller and you often won't need to draw boxes beyond one per page.
+2. *How is it set?* **Suggest:** drag a rectangle on the live preview (FR-C13). That's why FR-C13 comes first. **Clear** returns to the whole source.
+3. *How is it stored?* **Suggest:** as fractions of the source's width and height, saved per workspace, so it survives a window resize or a different resolution.
+4. *Visible during capture?* **Suggest:** yes, as an outline on the preview and on the latest saved frame.
+5. *Can it change mid-workspace?* **Suggest:** yes, while capture is stopped. Frames already saved aren't changed.
+6. *More than one region?* **Suggest:** no, one rectangle. That covers the score area, which is the case that matters.
