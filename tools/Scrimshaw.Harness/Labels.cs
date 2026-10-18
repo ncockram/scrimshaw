@@ -8,10 +8,11 @@ namespace Scrimshaw.Harness;
 /// <list type="bullet">
 /// <item><c>pages</c>: each page's run of clean frames. Exactly one frame per page should be saved.</item>
 /// <item><c>ignore</c>: runs where saving is acceptable either way (e.g. YouTube's end screen).</item>
+/// <item><c>region</c>: optional music area (FR-C12) as "x,y,w,h" fractions; replay watches only that part.</item>
 /// </list>
 /// Frames in neither list are transitions; saving one is an error.
 /// </summary>
-internal sealed record Labels(string? Description, IReadOnlyList<PageLabel> Pages, IReadOnlyList<RangeLabel>? Ignore)
+internal sealed record Labels(string? Description, IReadOnlyList<PageLabel> Pages, IReadOnlyList<RangeLabel>? Ignore, string? Region = null)
 {
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 

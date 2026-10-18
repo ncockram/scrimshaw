@@ -42,6 +42,13 @@ public sealed record WorkspaceSettings
 
     /// <summary>Stop capturing a window when its title changes, e.g. the next video starts (FR-C14).</summary>
     public bool StopOnTitleChange { get; set; } = true;
+
+    /// <summary>The music area (FR-C12): change detection looks only inside it. Null = the whole source.</summary>
+    public CaptureRegion? Region { get; set; }
+
+    /// <summary>Save only the music area instead of the full frame (FR-C12).</summary>
+    public bool SaveRegionOnly { get; set; }
+
     public ChangeDetectionSettings Detection { get; set; } = new();
     public ImageFormat ImageFormat { get; set; } = ImageFormat.Png;
     public int JpegQuality { get; set; } = 90;
@@ -62,6 +69,7 @@ public sealed record WorkspaceSettings
         Check(Detection.SettleTolerance is >= 0 and <= 255, "Settle tolerance must be 0–255.");
         Check(Detection.SettleAreaThreshold is > 0 and <= 1, "Settle threshold must be above 0% and at most 100%.");
         Check(Detection.SettleCount >= 0, "Settle count can't be negative.");
+        Check(Region is null || Region.IsValid, "The music area is too small or outside the picture.");
         Export.Validate();
     }
 }

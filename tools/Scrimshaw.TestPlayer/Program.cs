@@ -4,13 +4,14 @@
 //
 //   scrimshaw-testplayer --log run.json [--refs dir] [--style cut|half|fade|slide|mixed] [--pages 5]
 //                        [--hold 3] [--turn 0.6] [--seed 1] [--x 100 --y 100] [--w 1280 --h 720]
-//                        [--title "Scrimshaw TestPlayer"] [--retitle-after seconds]
+//                        [--title "Scrimshaw TestPlayer"] [--retitle-after seconds] [--distraction]
 // Position and size are physical pixels. The window closes itself after the last page.
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -19,7 +20,8 @@ using System.Windows.Media.Imaging;
 namespace Scrimshaw.TestPlayer;
 
 internal sealed record PlayerOptions(
-    string Log, string? Refs, string Style, int Pages, double Hold, double Turn, int Seed, int X, int Y, int W, int H, string Title, double RetitleAfter)
+    string Log, string? Refs, string Style, int Pages, double Hold, double Turn, int Seed, int X, int Y, int W, int H, string Title, double RetitleAfter,
+    bool Distraction)
 {
     public static PlayerOptions Parse(string[] args)
     {
@@ -33,7 +35,7 @@ internal sealed record PlayerOptions(
         return new PlayerOptions(
             Get("log") ?? "testplayer-log.json", Get("refs"), Get("style") ?? "mixed", Int("pages", 5),
             Dbl("hold", 3), Dbl("turn", 0.6), Int("seed", 1), Int("x", 100), Int("y", 100), Int("w", 1280), Int("h", 720),
-            Get("title") ?? "Scrimshaw TestPlayer", Dbl("retitle-after", 0));
+            Get("title") ?? "Scrimshaw TestPlayer", Dbl("retitle-after", 0), Array.IndexOf(args, "--distraction") >= 0);
     }
 }
 
@@ -70,7 +72,7 @@ internal static partial class Program
             ShowInTaskbar = true,
             Background = Brushes.White,
             UseLayoutRounding = true,
-            Content = new Grid { ClipToBounds = true, Children = { back, front } },
+            Content = new Grid { ClipToBounds = true, Children = { back, front, Distraction(o) } },
         };
         // Move first, then size: moving between monitors with different scaling makes WPF rescale the window
         // (PerMonitorV2), so the physical size is only reliable once the window is on its target monitor.
@@ -266,6 +268,30 @@ internal static partial class Program
         rtb.Render(dv);
         rtb.Freeze();
         return rtb;
+    }
+
+    /// <summary>
+    /// FR-C12 test material: with --distraction, the bottom 20% shows a "performer video" (big blocks of colour)
+    /// that changes several times a second, so without a music area every capture looks like a new page.
+    /// </summary>
+    private static UniformGrid Distraction(PlayerOptions o)
+    {
+        var panel = new UniformGrid { Rows = 2, Columns = 16, VerticalAlignment = VerticalAlignment.Bottom, Height = o.H * 0.2 };
+        if (!o.Distraction) return panel;
+        var rng = new Random(o.Seed);
+        var cells = Enumerable.Range(0, 32).Select(_ => new Border()).ToList();
+        cells.ForEach(c => panel.Children.Add(c));
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+        timer.Tick += (_, _) =>
+        {
+            foreach (Border c in cells)
+            {
+                byte v = (byte)rng.Next(256);
+                c.Background = new SolidColorBrush(Color.FromRgb(v, (byte)(255 - v), (byte)rng.Next(256)));
+            }
+        };
+        timer.Start();
+        return panel;
     }
 
     private static void PlaceWindow(Window window, PlayerOptions o)

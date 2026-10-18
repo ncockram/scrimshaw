@@ -1,7 +1,7 @@
 // Scrimshaw developer harness.
 //   scrimshaw-harness replay <framesDir> [--labels labels.json] [--threshold 0.03] [--tol 24]
-//                            [--settle 1] [--settle-tol 8] [--settle-area 0.01] [--no-longest] [--verbose]
-//   scrimshaw-harness synth <outDir> [--style cut|half|fade|slide|mixed] [--pages 8] [--hold 5] [--noise 4] [--seed 1]
+//                            [--settle 1] [--settle-tol 8] [--settle-area 0.01] [--no-longest] [--region x,y,w,h] [--verbose]
+//   scrimshaw-harness synth <outDir> [--style cut|half|fade|slide|mixed] [--pages 8] [--hold 5] [--noise 4] [--seed 1] [--distraction]
 //   scrimshaw-harness bench [--width 3840] [--height 2160] [--runs 20] [--interval 0.5]
 //   scrimshaw-harness record <outDir> --window "title text" [--interval 1] [--max 900]
 //   scrimshaw-harness contact <framesDir> <out.png> [--from 1] [--to 9999] [--step 1] [--cols 8] [--width 240]

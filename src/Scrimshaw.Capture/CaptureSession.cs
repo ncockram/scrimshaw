@@ -174,10 +174,16 @@ public sealed class CaptureSession : IAsyncDisposable
 
                 DateTimeOffset capturedAt = _time.GetUtcNow();
                 RawImage? image = _source.Grab();
-                DetectionResult? result = image is null ? null : detector.Process(image);
+                // FR-C12: detection looks only at the music area; what's saved is the full frame unless asked otherwise.
+                RawImage? watched = image is null ? null : ForDetection(image);
+                DetectionResult? result = watched is null ? null : detector.Process(watched);
                 bool dropped = false;
                 if (result is { Decision: DetectionDecision.Save or DetectionDecision.Replace } r)
-                    dropped = !_queue.Writer.TryWrite(new PendingFrame(r.Image!, r.Grid, capturedAt, r.Decision == DetectionDecision.Replace));
+                {
+                    RawImage keep = _settings.SaveRegionOnly ? r.Image! : image!;
+                    dropped = !_queue.Writer.TryWrite(new PendingFrame(
+                        keep, ReferenceEquals(keep, r.Image) ? r.Grid : null, capturedAt, r.Decision == DetectionDecision.Replace));
+                }
 
                 CaptureStats stats;
                 lock (_statsLock)
@@ -244,7 +250,7 @@ public sealed class CaptureSession : IAsyncDisposable
             CapturedAt = frame.CapturedAt,
             Width = frame.Image.Width,
             Height = frame.Image.Height,
-            DHash = DHash.ToHex(DHash.Compute(frame.Grid)),
+            DHash = DHash.ToHex(DHash.Compute(frame.Grid ?? GrayGrid.FromImage(frame.Image))),
         };
         string path = _workspace.FullPath(record);
         string temp = path + ".tmp";
@@ -266,7 +272,7 @@ public sealed class CaptureSession : IAsyncDisposable
         {
             Width = frame.Image.Width,
             Height = frame.Image.Height,
-            DHash = DHash.ToHex(DHash.Compute(frame.Grid)),
+            DHash = DHash.ToHex(DHash.Compute(frame.Grid ?? GrayGrid.FromImage(frame.Image))),
         });
     }
 
@@ -305,7 +311,9 @@ public sealed class CaptureSession : IAsyncDisposable
         FrameRecord last = frames[^1];
         try
         {
-            detector.Seed(GrayGrid.FromImage(_codec.Decode(_workspace.FullPath(last))));
+            RawImage previous = _codec.Decode(_workspace.FullPath(last));
+            // A full saved frame is cropped to the music area; a "save only this area" frame already is it.
+            detector.Seed(GrayGrid.FromImage(_settings.SaveRegionOnly ? previous : ForDetection(previous)));
         }
 #pragma warning disable CA1031 // A missing or unreadable last frame just means starting fresh.
         catch (Exception ex)
@@ -315,5 +323,9 @@ public sealed class CaptureSession : IAsyncDisposable
         }
     }
 
-    private sealed record PendingFrame(RawImage Image, GrayGrid Grid, DateTimeOffset CapturedAt, bool Replace);
+    private RawImage ForDetection(RawImage image) =>
+        _settings.Region is { } region ? ImageOps.Crop(image, region.ToPixels(image.Width, image.Height)) : image;
+
+    /// <param name="Grid">The saved image's grid if already computed; otherwise worked out when writing.</param>
+    private sealed record PendingFrame(RawImage Image, GrayGrid? Grid, DateTimeOffset CapturedAt, bool Replace);
 }

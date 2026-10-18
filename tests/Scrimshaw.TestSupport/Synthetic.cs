@@ -76,6 +76,20 @@ public static class Synthetic
         return new RawImage(image.Width, image.Height, px);
     }
 
+    /// <summary>
+    /// The bottom 20% replaced by random grey blocks, like a performer video beside the score (FR-C12):
+    /// a different <paramref name="seed"/> changes far more than the detection threshold.
+    /// </summary>
+    public static RawImage WithDistraction(RawImage image, int seed)
+    {
+        var rng = new Random(seed);
+        var px = (byte[])image.Bgra.Clone();
+        for (int y = image.Height * 8 / 10; y < image.Height; y += 8)
+            for (int x = 0; x < image.Width; x += 8)
+                Fill(px, image.Width, x, y, 8, 8, (byte)rng.Next(256));
+        return new RawImage(image.Width, image.Height, px);
+    }
+
     public static RawImage Solid(int width, int height, byte value)
     {
         var px = new byte[width * height * 4];

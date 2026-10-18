@@ -13,13 +13,14 @@ namespace Scrimshaw.Harness;
 internal static class SynthCommand
 {
     private const int W = 1920, H = 1080, Scale = 6; // pages are drawn at 320×180 and scaled up
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
 
     public static int Run(CommandLine cl)
     {
         string outDir = Path.GetFullPath(cl.Arg(0, "outDir"));
         string style = cl.Get("style") ?? "mixed";
         int pages = cl.Int("pages", 8), hold = cl.Int("hold", 5), noise = cl.Int("noise", 4), seed = cl.Int("seed", 1);
+        bool distraction = cl.Has("distraction");
         Directory.CreateDirectory(outDir);
         foreach (string old in Directory.EnumerateFiles(outDir, "frame_*.png")) File.Delete(old);
 
@@ -32,6 +33,7 @@ internal static class SynthCommand
         {
             n++;
             RawImage frame = Noisy(img, noise, seed * 100_000 + n);
+            if (distraction) frame = WithDistraction(frame, n);
             if (blipAllowed && rng.Next(6) == 0) frame = WithCursor(frame, rng.Next(100, W - 100), rng.Next(100, H - 100));
             codec.Encode(frame, Path.Combine(outDir, string.Create(CultureInfo.InvariantCulture, $"frame_{n:D5}.png")), ImageFormat.Png, 0);
         }
@@ -73,8 +75,10 @@ internal static class SynthCommand
 
         var doc = new
         {
-            description = $"Synthetic: style={style} pages={pages} hold={hold} noise=±{noise} seed={seed}, {W}x{H}",
+            description = $"Synthetic: style={style} pages={pages} hold={hold} noise=±{noise} seed={seed}, {W}x{H}" +
+                (distraction ? "; with a changing 'performer video' strip in the bottom 20%, so detection needs the music area" : ""),
             pages = labels,
+            region = distraction ? "0,0,1,0.8" : null,
         };
         File.WriteAllText(Path.Combine(outDir, "labels.json"), JsonSerializer.Serialize(doc, Indented));
         Console.WriteLine($"wrote {n} frames, {labels.Count} labelled pages to {outDir}");
@@ -153,6 +157,29 @@ internal static class SynthCommand
         var rng = new Random(seed);
         var px = (byte[])img.Bgra.Clone();
         for (int i = 0; i < px.Length; i++) px[i] = (byte)Math.Clamp(px[i] + rng.Next(-amplitude, amplitude + 1), 0, 255);
+        return new RawImage(img.Width, img.Height, px);
+    }
+
+    /// <summary>
+    /// FR-C12 test material: the bottom 20% becomes a "performer video" that changes on every frame, enough on its
+    /// own to count as a new page, so only a music area (region) keeps detection on the score.
+    /// </summary>
+    internal static RawImage WithDistraction(RawImage img, int frameNumber)
+    {
+        var px = (byte[])img.Bgra.Clone();
+        var rng = new Random(frameNumber * 31 + 7);
+        int top = H * 8 / 10;
+        for (int by = top; by < H; by += 24)
+            for (int bx = 0; bx < W; bx += 24)
+            {
+                byte v = (byte)rng.Next(256);
+                for (int y = by; y < Math.Min(H, by + 24); y++)
+                    for (int x = bx; x < Math.Min(W, bx + 24); x++)
+                    {
+                        int o = (y * W + x) * 4;
+                        px[o] = px[o + 1] = px[o + 2] = v;
+                    }
+            }
         return new RawImage(img.Width, img.Height, px);
     }
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Scrimshaw.Core.Detection;
+using Scrimshaw.Core.Imaging;
 using Scrimshaw.Imaging;
 
 namespace Scrimshaw.Harness;
@@ -44,10 +45,15 @@ internal static partial class ReplayCommand
         Console.WriteLine($"  {settings}");
         var codec = new WicImageCodec();
         var detector = new ChangeDetector(settings);
+        Labels? labels = labelsPath is null ? null : Labels.Load(labelsPath);
+        CaptureRegion? region = (cl.Get("region") ?? labels?.Region) is { } regionText ? CaptureRegion.Parse(regionText) : null;
+        if (region is not null) Console.WriteLine($"  music area (FR-C12): {region}");
         var saved = new List<int>();
         foreach (var (path, number) in frames)
         {
-            DetectionResult r = detector.Process(codec.Decode(path));
+            RawImage frame = codec.Decode(path);
+            if (region is not null) frame = ImageOps.Crop(frame, region.ToPixels(frame.Width, frame.Height));
+            DetectionResult r = detector.Process(frame);
             if (r.Decision == DetectionDecision.Save) saved.Add(number);
             if (r.Decision == DetectionDecision.Replace && saved.Count > 0) saved[^1] = number; // the page's image is now this frame
             if (verbose || r.Decision is DetectionDecision.Save or DetectionDecision.Replace)
@@ -55,8 +61,8 @@ internal static partial class ReplayCommand
         }
         Console.WriteLine($"saved {saved.Count}: [{string.Join(", ", saved)}]");
 
-        if (labelsPath is null) return 0;
-        return Score(Labels.Load(labelsPath), saved) ? 0 : 1;
+        if (labels is null) return 0;
+        return Score(labels, saved) ? 0 : 1;
     }
 
     /// <returns>True when every page was saved exactly once and no transition frame was saved.</returns>

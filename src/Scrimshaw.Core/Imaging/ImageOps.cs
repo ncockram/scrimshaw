@@ -3,6 +3,20 @@ namespace Scrimshaw.Core.Imaging;
 /// <summary>Small pixel operations on <see cref="RawImage"/>.</summary>
 public static class ImageOps
 {
+    /// <summary>A copy of the pixels inside <paramref name="rect"/> (clamped to the image).</summary>
+    public static RawImage Crop(RawImage image, Annotation.PixelRect rect)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        int x = Math.Clamp(rect.X, 0, image.Width - 1), y = Math.Clamp(rect.Y, 0, image.Height - 1);
+        int w = Math.Clamp(rect.W, 1, image.Width - x), h = Math.Clamp(rect.H, 1, image.Height - y);
+        if (x == 0 && y == 0 && w == image.Width && h == image.Height) return image;
+        int stride = w * 4;
+        var dst = new byte[stride * h];
+        for (int row = 0; row < h; row++)
+            Buffer.BlockCopy(image.Bgra, (y + row) * image.Stride + x * 4, dst, row * stride, stride);
+        return new RawImage(w, h, stride, dst);
+    }
+
     /// <summary>
     /// Shrinks the image by a whole-number factor (box filter) until it's at most <paramref name="maxWidth"/> wide.
     /// Returns the same instance when it's already small enough. Used for the source preview (FR-C13).

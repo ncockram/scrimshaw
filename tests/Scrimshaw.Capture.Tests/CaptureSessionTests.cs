@@ -164,6 +164,89 @@ public sealed class CaptureSessionTests : IDisposable
         Assert.Equal(2, second.Stats.Discarded); // p1 was already saved by the first run
     }
 
+    private static readonly CaptureRegion TopEightyPercent = new() { X = 0, Y = 0, W = 1, H = 0.8 };
+
+    /// <summary>Three ticks of each page, with the "performer video" strip different on every tick.</summary>
+    private static RawImage[] PagesWithDistraction(params int[] pages) =>
+        pages.SelectMany(p => Enumerable.Range(0, 3).Select(i => Synthetic.WithDistraction(Synthetic.Page(p), p * 10 + i))).ToArray();
+
+    [Fact]
+    public async Task Without_a_music_area_a_changing_video_strip_keeps_the_page_from_settling()
+    {
+        using Workspace ws = NewWorkspace();
+        var session = new CaptureSession(ws, new ScriptedSource(PagesWithDistraction(1, 2)), _codec, _time);
+        session.Start();
+        await TickAsync(session, 6);
+        await session.StopAsync();
+
+        // The strip never stops changing, so the page never settles and nothing is saved.
+        Assert.Equal(0, session.Stats.Saved);
+        Assert.True(session.Stats.Settling);
+    }
+
+    [Fact]
+    public async Task With_a_music_area_only_page_turns_count_and_full_frames_are_saved()
+    {
+        using Workspace ws = NewWorkspace();
+        ws.UpdateSettings(s => s with { Region = TopEightyPercent });
+        RawImage[] frames = PagesWithDistraction(1, 2);
+        var session = new CaptureSession(ws, new ScriptedSource(frames), _codec, _time);
+        session.Start();
+        await TickAsync(session, 6);
+        await session.StopAsync();
+
+        Assert.Equal((2, 2), (session.Stats.Saved, session.Stats.Discarded)); // each page: settle, save, repeat
+        FrameRecord first = ws.Manifest.Current.Frames[0];
+        Assert.Equal((Synthetic.Width, Synthetic.Height), (first.Width, first.Height));
+        RawImage onDisk = _codec.Decode(ws.FullPath(first));
+        Assert.Equal(frames[1].Bgra, onDisk.Bgra); // saved once settled, strip and all: the area only steers detection
+        Assert.Equal(Core.Detection.DHash.ToHex(Core.Detection.DHash.Compute(Core.Detection.GrayGrid.FromImage(frames[1]))), first.DHash);
+    }
+
+    [Fact]
+    public async Task Save_only_this_area_crops_what_is_saved()
+    {
+        using Workspace ws = NewWorkspace();
+        ws.UpdateSettings(s => s with { Region = TopEightyPercent, SaveRegionOnly = true });
+        var session = new CaptureSession(ws, new ScriptedSource(PagesWithDistraction(1, 2)), _codec, _time);
+        session.Start();
+        await TickAsync(session, 6);
+        await session.StopAsync();
+
+        Assert.Equal(2, session.Stats.Saved);
+        Core.Annotation.PixelRect area = TopEightyPercent.ToPixels(Synthetic.Width, Synthetic.Height);
+        foreach (FrameRecord f in ws.Manifest.Current.Frames)
+        {
+            RawImage onDisk = _codec.Decode(ws.FullPath(f));
+            Assert.Equal((area.W, area.H), (onDisk.Width, onDisk.Height));
+            Assert.Equal((area.W, area.H), (f.Width, f.Height));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Resuming_with_a_music_area_skips_the_page_already_saved(bool saveRegionOnly)
+    {
+        using (Workspace ws = NewWorkspace())
+        {
+            ws.UpdateSettings(s => s with { Region = TopEightyPercent, SaveRegionOnly = saveRegionOnly });
+            var first = new CaptureSession(ws, new ScriptedSource(PagesWithDistraction(1)), _codec, _time);
+            first.Start();
+            await TickAsync(first, 3);
+            await first.StopAsync();
+        }
+
+        using Workspace reopened = Workspace.Open(_dir.Path, _codec, _time);
+        var second = new CaptureSession(reopened, new ScriptedSource(PagesWithDistraction(1, 2)), _codec, _time);
+        second.Start();
+        await TickAsync(second, 6);
+        await second.StopAsync();
+
+        Assert.Equal([1, 2], reopened.Manifest.Current.Frames.Select(f => f.Seq));
+        Assert.Equal(1, second.Stats.Saved); // page 1 was recognised from the saved frame
+    }
+
     [Fact]
     public async Task Write_failure_stops_capture_with_the_error()
     {
