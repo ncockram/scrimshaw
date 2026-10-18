@@ -614,6 +614,18 @@ Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a p
 
 **Done when** all the above pass. **→ Checkpoint: you try a video with something moving outside the score**, if you have one (otherwise the TestPlayer demonstration).
 
+**Status: built and verified (2026-10-18); waiting for your checkpoint.**
+- 240 headless tests (23 new: area maths and cropping, settings round trip, session behaviour including a half-page turn inside the area and resuming, and the view-model).
+- **Replay:** the new `samples/synthetic/distraction` (its `labels.json` names the area, so a plain `replay` uses it) finds 12/12 pages with the area and 0/12 over the whole picture. Every existing sample still passes.
+- **Desktop (TestPlayer with `--distraction`):** over the whole window, 18 captures saved **0** pages; with the area, the same run saved each of the 3 pages once, at full size.
+- **Desktop (FlaUI):** an area dragged on the preview is outlined there and on the latest saved frame (screenshots reviewed); capture saved each page once. Every other desktop and UI test still passes.
+- Area changes are **redraw only**: no handles for adjusting an area once drawn.
+
+| # | Finding | Action |
+|---|---|---|
+| F40 | Something that keeps changing outside the score doesn't make extra pages, as the plan expected: it stops the page **ever settling**, so nothing is saved at all. | The tests check for that; the user guide will say "if nothing is being saved, mark the music area". |
+| F41 | The TestPlayer's flickering strip was sized in DIPs, so on a scaled monitor it covered more than 20% of the window and would overlap a 0–80% area. | Sized with star rows, so it's exactly 20% at any DPI |
+
 ### Phase 9 — v1.1 release
 
 - **Docs:**
