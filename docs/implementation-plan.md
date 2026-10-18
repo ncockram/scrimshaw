@@ -498,6 +498,7 @@ v1.0 meets every Must and Should requirement (requirements §9). What follows is
 | Combine workspaces | Small | One PDF from several videos (e.g. a suite's movements) |
 | Configurable hotkey | Small | For when Ctrl+Alt+S clashes with another app |
 | Capture timer | Small | Stop after a set time (the original R2, set aside for FR-C14 at review) |
+| Tidy up after an automatic stop | Small | When capture stops because the title changed, mark frames saved in the few seconds before as deleted (restorable with Ctrl+D): YouTube's end screen and the next video's first page (F42). Set aside at the v1.1 release in favour of a user-guide note |
 | Installer or winget package; ARM64 build | Small–Medium | Easier installation and updates; NFR-1's Could |
 | Optical music recognition / MusicXML | Very large | Out of scope for v1 (requirements §2); a different kind of project |
 
@@ -634,6 +635,15 @@ Three Capture-tab features, built in the order agreed on 2026-10-18. Each is a p
   - README feature list; About text; `CLAUDE.md` if anything new is learnt
 - **Release:** version 1.1.0 and a single-file publish. The full UI and desktop suites run against the published exe (coordinated), including real-video acceptance with V1 stopping on its own.
 - **→ Final checkpoint for v1.1.**
+
+**Status: released as v1.1.0 (2026-10-18); waiting for your final checkpoint.**
+- Version 1.1.0; requirements §9 and §11, user guide, README and About updated. 240 headless tests.
+- **Against the published exe:** all 10 desktop capture tests and all 6 UI tests pass (including About showing 1.1.0).
+- **Real video (V1), through the UI only:** stopped **by itself** after 130 s when YouTube moved on to the next video; 6 frames saved, boxed and exported.
+
+| # | Finding | Action |
+|---|---|---|
+| F42 | **YouTube shows the next video a few seconds before it changes the window's title.** With the two-sighting check, the V1 run saved the "Up next" screen and then the next video's first page (2 s later) before stopping. In Phase 6 the timing fell the other way and only the end screen was saved, so it varies. | You chose to ship v1.1 as is: the user guide says to check the last page or two after an automatic stop. Automatic tidy-up is on the ideas list (§13). |
 
 ### v1.1 risks
 

@@ -198,7 +198,7 @@ Every **Must** and **Should** requirement is delivered, including the three v1.1
 | FR-C11 Resume | Done (Should) | Capture-session test |
 | FR-C12 Region of interest ("music area") | Done (v1.1) | Area maths, session and view-model tests; replay of the `distraction` sample (12/12 with the area, 0/12 without); desktop test with the TestPlayer's flickering strip; UI test that drags the area on the preview |
 | FR-C13 Preview the selected source | Done (v1.1) | Preview session and view-model tests (including "preview stops before capture starts"); UI test with the TestPlayer, including the minimised message |
-| FR-C14 Stop on title change | Done (v1.1) | Title-watcher and session tests; desktop test (stopped 0.5 s after the retitle); real-video acceptance stops on its own when YouTube moves on |
+| FR-C14 Stop on title change | Done (v1.1). Known limitation: YouTube can show the next video's first page before the title changes, so it may be saved (plan F42; user guide) | Title-watcher and session tests; desktop test (stopped 0.5 s after the retitle); real-video acceptance stops on its own when YouTube moves on |
 | FR-D1–D8 | Done | Unit tests; replay of 5 synthetic and 4 real labelled recordings, all passing; desktop tests per turn style |
 | FR-A1–A4, A6, A10 | Done | Editor and view-model tests; UI tests with the real mouse |
 | FR-A5, A7, A8, A9, A11 | Done (Should) | Same; undo goes beyond "within a frame" (one history, and "apply to following" undoes in one step) |

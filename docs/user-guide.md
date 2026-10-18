@@ -50,6 +50,7 @@ To change it, drag again; **Clear area** goes back to the whole picture. The are
 - Keep the browser window **fully on screen**. Any part that's off the edge comes out black.
 - You can start capture again in the same workspace (for example, after an interruption). New pages are added after the existing ones.
 - The status bar always says why capture stopped (you stopped it, the title changed, or the window closed).
+- **After an automatic stop, check the last page or two.** YouTube shows its "Up next" screen, and sometimes the next video's first page, a moment before the title changes, so these can be saved. Delete them in Review with **Ctrl+D**.
 
 ## 3. Review and box the music
 
