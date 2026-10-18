@@ -97,7 +97,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// frame (false). The preview only actually runs while the Capture tab is showing and capture is stopped.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FrameAreaHeader))]
+    [NotifyPropertyChangedFor(nameof(FrameAreaHeader), nameof(CanDrawRegion))]
     [NotifyCanExecuteChangedFor(nameof(ShowPreviewCommand))]
     public partial bool IsPreviewing { get; private set; }
 
@@ -143,9 +143,35 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>The title option only applies to windows, and can't change mid-capture.</summary>
     public bool CanStopOnTitleChange => CanEditSettings && SelectedTarget?.Target is WindowTarget;
 
+    /// <summary>FR-C12: the music area. Change detection looks only inside it; null = the whole source.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat), nameof(CanStopOnTitleChange))]
-    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand), nameof(ShowPreviewCommand))]
+    [NotifyPropertyChangedFor(nameof(HasRegion), nameof(CanSaveRegionOnly), nameof(RegionText), nameof(ShowRegionOnLatestFrame))]
+    [NotifyCanExecuteChangedFor(nameof(ClearRegionCommand))]
+    public partial CaptureRegion? Region { get; private set; }
+
+    /// <summary>FR-C12: save the music area instead of the full frame.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowRegionOnLatestFrame))]
+    public partial bool SaveRegionOnly { get; set; }
+
+    public bool HasRegion => Region is not null;
+
+    public bool CanSaveRegionOnly => CanEditSettings && Region is not null;
+
+    /// <summary>The area is drawn on the live preview, and only while capture is stopped.</summary>
+    public bool CanDrawRegion => CanEditSettings && IsPreviewing;
+
+    /// <summary>A saved frame that's already just the area needs no outline.</summary>
+    public bool ShowRegionOnLatestFrame => Region is not null && !SaveRegionOnly;
+
+    public string RegionText => Region is { } r
+        ? string.Create(CultureInfo.CurrentCulture,
+            $"Music area set ({r.W * 100:0}% × {r.H * 100:0}% of the source): only changes inside the green outline count as new pages. Drag again to redraw it.")
+        : "Optional: drag on the preview to mark the music area, so changes elsewhere (player controls, a performer video) are ignored.";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditSettings), nameof(CanChangeFormat), nameof(CanStopOnTitleChange), nameof(CanSaveRegionOnly), nameof(CanDrawRegion))]
+    [NotifyCanExecuteChangedFor(nameof(StartCaptureCommand), nameof(StopCaptureCommand), nameof(NewWorkspaceCommand), nameof(OpenWorkspaceCommand), nameof(OpenRecentCommand), nameof(ShowPreviewCommand), nameof(SetRegionCommand), nameof(ClearRegionCommand))]
     public partial bool IsCapturing { get; private set; }
 
     [ObservableProperty]
@@ -382,6 +408,29 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     private bool CanShowPreview() => !IsPreviewing && CanEditSettings && SelectedTarget is not null;
 
+    /// <summary>FR-C12: a new music area, drawn on the preview. Frames already saved are untouched.</summary>
+    [RelayCommand(CanExecute = nameof(CanSetRegion))]
+    private void SetRegion(CaptureRegion? region)
+    {
+        if (region is null || !region.IsValid || !CanEditSettings) return;
+        Region = region;
+        SaveSettingsQuietly();
+        StatusMessage = "Music area set. Only changes inside it count as new pages; frames are still saved in full unless you tick Save only this area.";
+    }
+
+    private bool CanSetRegion(CaptureRegion? region) => CanEditSettings;
+
+    [RelayCommand(CanExecute = nameof(CanClearRegion))]
+    private void ClearRegion()
+    {
+        Region = null;
+        SaveRegionOnly = false;
+        SaveSettingsQuietly();
+        StatusMessage = "Music area cleared: the whole source is watched again.";
+    }
+
+    private bool CanClearRegion() => CanEditSettings && Region is not null;
+
     public async ValueTask DisposeAsync()
     {
         StopPreviewSession();
@@ -500,13 +549,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         JpegQuality = s.JpegQuality;
         IncludeCursor = s.IncludeCursor;
         StopOnTitleChange = s.StopOnTitleChange;
+        Region = s.Region;
+        SaveRegionOnly = s.SaveRegionOnly && s.Region is not null;
         Stats = CaptureStats.Empty;
         UpdateFrameInfo();
         OnPropertyChanged(nameof(HasWorkspace));
         OnPropertyChanged(nameof(CanEditSettings));
         OnPropertyChanged(nameof(CanChangeFormat));
         OnPropertyChanged(nameof(CanStopOnTitleChange));
+        OnPropertyChanged(nameof(CanSaveRegionOnly));
+        OnPropertyChanged(nameof(CanDrawRegion));
         StartCaptureCommand.NotifyCanExecuteChanged();
+        SetRegionCommand.NotifyCanExecuteChanged();
+        ClearRegionCommand.NotifyCanExecuteChanged();
         if (s.Target is not null)
         {
             CaptureTarget? match = CaptureTargets.Resolve(s.Target, Targets.Select(t => t.Target).ToList());
@@ -524,6 +579,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Target = SelectedTarget?.Target.ToDescriptor() ?? s.Target,
             IncludeCursor = IncludeCursor,
             StopOnTitleChange = StopOnTitleChange,
+            Region = Region,
+            SaveRegionOnly = SaveRegionOnly && Region is not null,
             Detection = s.Detection with { AreaThreshold = ThresholdPercent / 100 },
             ImageFormat = CanChangeFormat ? (IsJpeg ? ImageFormat.Jpeg : ImageFormat.Png) : s.ImageFormat,
             JpegQuality = Math.Clamp(JpegQuality, 1, 100),

@@ -174,6 +174,46 @@ public sealed partial class DesktopCaptureTests
         if (!player.HasExited) player.Kill();
     }
 
+    /// <summary>
+    /// FR-C12: the TestPlayer's bottom 20% flickers like a performer video. Watching the whole window, that
+    /// strip keeps every page from settling; with the music area set to the rest, each page is saved once, in full.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_music_area_ignores_a_changing_strip_outside_it(bool withRegion)
+    {
+        string runDir = RunDirectory(withRegion ? "region-on" : "region-off");
+        string title = "Scrimshaw TestPlayer " + Guid.NewGuid().ToString("N")[..8];
+        string logPath = Path.Combine(runDir, "player-log.json");
+        using Process player = StartPlayer(title, logPath, null, "cut", pages: 3, hold: 3, turn: 0, distraction: true);
+        WindowTarget target = await FindWindowAsync(title);
+        var settings = new WorkspaceSettings
+        {
+            IntervalSeconds = 0.5,
+            Region = withRegion ? new CaptureRegion { X = 0, Y = 0, W = 1, H = 0.8 } : null,
+        };
+        using Workspace ws = Workspace.Create(Path.Combine(runDir, "workspace"), settings);
+        using IFrameSource source = FrameSources.Create(target, includeCursor: false);
+        var session = new CaptureSession(ws, source, _codec);
+        session.Start();
+        for (int i = 0; i < 300 && !player.HasExited; i++) await Task.Delay(100, TestContext.Current.CancellationToken);
+        await session.StopAsync();
+
+        CaptureStats stats = session.Stats;
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"region={withRegion}: {stats.Attempts} captures, {stats.Saved} saved, {stats.Discarded} skipped, settling={stats.Settling}");
+        if (withRegion)
+        {
+            Assert.Equal(3, ws.Manifest.Current.Frames.Count);
+            Assert.All(ws.Manifest.Current.Frames, f => Assert.Equal((PlayerWidth, PlayerHeight), (f.Width, f.Height)));
+        }
+        else
+        {
+            Assert.NotEqual(3, ws.Manifest.Current.Frames.Count);
+        }
+    }
+
     [Fact]
     public async Task Closing_the_window_stops_capture_as_target_lost()
     {
@@ -205,7 +245,8 @@ public sealed partial class DesktopCaptureTests
         throw new TimeoutException("no frame arrived");
     }
 
-    private static Process StartPlayer(string title, string log, string? refs, string style, int pages, double hold, double turn, double retitleAfter = 0)
+    private static Process StartPlayer(string title, string log, string? refs, string style, int pages, double hold, double turn, double retitleAfter = 0,
+        bool distraction = false)
     {
         string exe = Path.Combine(RepoRoot(), "tools", "Scrimshaw.TestPlayer", "bin", "Debug", "net10.0-windows", "scrimshaw-testplayer.exe");
         if (!File.Exists(exe)) Assert.Skip($"Build the TestPlayer first: {exe} not found.");
@@ -226,6 +267,7 @@ public sealed partial class DesktopCaptureTests
         };
         if (refs is not null) args.AddRange(["--refs", refs]);
         if (retitleAfter > 0) args.AddRange(["--retitle-after", retitleAfter.ToString(CultureInfo.InvariantCulture)]);
+        if (distraction) args.Add("--distraction");
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
         foreach (string a in args) psi.ArgumentList.Add(a);
         return Process.Start(psi)!;

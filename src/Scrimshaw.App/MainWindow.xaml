@@ -197,9 +197,20 @@
                                 <Button DockPanel.Dock="Right" Content="Show preview" Command="{Binding ShowPreviewCommand}"
                                         ToolTip="Show a live preview of the selected source (nothing is saved)"
                                         AutomationProperties.AutomationId="ShowPreview" />
+                                <Button DockPanel.Dock="Right" Content="Clear area" Margin="0,0,8,0" Command="{Binding ClearRegionCommand}"
+                                        ToolTip="Watch the whole source again"
+                                        Visibility="{Binding HasRegion, Converter={StaticResource BoolToVisibility}}"
+                                        AutomationProperties.AutomationId="ClearRegion" />
+                                <CheckBox DockPanel.Dock="Right" Content="Save only this area" Margin="0,0,12,0" VerticalAlignment="Center"
+                                          IsChecked="{Binding SaveRegionOnly}" IsEnabled="{Binding CanSaveRegionOnly}"
+                                          ToolTip="Save the music area instead of the full frame"
+                                          Visibility="{Binding HasRegion, Converter={StaticResource BoolToVisibility}}"
+                                          AutomationProperties.AutomationId="SaveRegionOnly" />
                                 <TextBlock Text="{Binding FrameAreaHeader}" Style="{StaticResource SectionHeader}" Margin="0" VerticalAlignment="Center"
                                            AutomationProperties.AutomationId="FrameAreaHeader" />
                             </DockPanel>
+                            <TextBlock DockPanel.Dock="Bottom" Text="{Binding RegionText}" Style="{StaticResource Hint}" Margin="0,6,0,0"
+                                       TextWrapping="Wrap" AutomationProperties.AutomationId="RegionText" />
                             <Border BorderThickness="1" Background="#FFF4F4F4">
                                 <Border.Style>
                                     <Style TargetType="Border">
@@ -215,8 +226,10 @@
                                 <Grid>
                                     <!-- Latest saved frame -->
                                     <Grid Visibility="{Binding IsPreviewing, Converter={StaticResource HiddenIfTrue}}">
-                                        <Image Source="{Binding LatestFramePath, Converter={StaticResource PathToImage}}" Stretch="Uniform"
+                                        <Image x:Name="LatestFrameImage" Source="{Binding LatestFramePath, Converter={StaticResource PathToImage}}" Stretch="Uniform"
                                                RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.AutomationId="LatestFrame" />
+                                        <views:RegionOverlay Source="{Binding Source, ElementName=LatestFrameImage}" Region="{Binding Region}" IsHitTestVisible="False"
+                                                             Visibility="{Binding ShowRegionOnLatestFrame, Converter={StaticResource BoolToVisibility}}" />
                                         <TextBlock Text="Choose what to capture to preview it here. Saved frames appear here as pages are captured."
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" Style="{StaticResource Hint}"
                                                    Visibility="{Binding LatestFramePath, Converter={StaticResource VisibleIfUnset}}" />
@@ -225,6 +238,10 @@
                                     <Grid Visibility="{Binding IsPreviewing, Converter={StaticResource BoolToVisibility}}">
                                         <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
                                                AutomationProperties.Name="Preview" AutomationProperties.AutomationId="PreviewImage" />
+                                        <!-- FR-C12: drag here to mark the music area -->
+                                        <views:RegionOverlay Source="{Binding PreviewImage}" Region="{Binding Region}" CanDraw="{Binding CanDrawRegion}"
+                                                             DrawnCommand="{Binding SetRegionCommand}"
+                                                             AutomationProperties.Name="Music area" AutomationProperties.AutomationId="MusicAreaOverlay" />
                                         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Padding="8,2" CornerRadius="3"
                                                 Background="#E6E67E22">
                                             <!-- The id goes on the text: a Border isn't exposed to UI Automation -->

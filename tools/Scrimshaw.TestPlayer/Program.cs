@@ -274,10 +274,14 @@ internal static partial class Program
     /// FR-C12 test material: with --distraction, the bottom 20% shows a "performer video" (big blocks of colour)
     /// that changes several times a second, so without a music area every capture looks like a new page.
     /// </summary>
-    private static UniformGrid Distraction(PlayerOptions o)
+    private static Grid Distraction(PlayerOptions o)
     {
-        var panel = new UniformGrid { Rows = 2, Columns = 16, VerticalAlignment = VerticalAlignment.Bottom, Height = o.H * 0.2 };
-        if (!o.Distraction) return panel;
+        // Star rows keep the strip at exactly 20% of the window, whatever the DPI.
+        var host = new Grid { RowDefinitions = { new RowDefinition { Height = new GridLength(4, GridUnitType.Star) }, new RowDefinition() } };
+        var panel = new UniformGrid { Rows = 2, Columns = 16 };
+        Grid.SetRow(panel, 1);
+        host.Children.Add(panel);
+        if (!o.Distraction) return host;
         var rng = new Random(o.Seed);
         var cells = Enumerable.Range(0, 32).Select(_ => new Border()).ToList();
         cells.ForEach(c => panel.Children.Add(c));
@@ -291,7 +295,7 @@ internal static partial class Program
             }
         };
         timer.Start();
-        return panel;
+        return host;
     }
 
     private static void PlaceWindow(Window window, PlayerOptions o)

@@ -204,6 +204,22 @@ public sealed class CaptureSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_half_page_turn_inside_the_area_is_still_caught()
+    {
+        using Workspace ws = NewWorkspace();
+        ws.UpdateSettings(s => s with { Region = TopEightyPercent });
+        RawImage p1 = Synthetic.Page(1), p2 = Synthetic.Page(2), half = Synthetic.HalfTurn(p1, p2);
+        RawImage[] frames = new[] { p1, p1, p1, half, half, half, p2, p2, p2 }
+            .Select((img, i) => Synthetic.WithDistraction(img, 100 + i)).ToArray();
+        var session = new CaptureSession(ws, new ScriptedSource(frames), _codec, _time);
+        session.Start();
+        await TickAsync(session, frames.Length);
+        await session.StopAsync();
+
+        Assert.Equal(3, session.Stats.Saved);
+    }
+
+    [Fact]
     public async Task Save_only_this_area_crops_what_is_saved()
     {
         using Workspace ws = NewWorkspace();
